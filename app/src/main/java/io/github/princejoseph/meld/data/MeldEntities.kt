@@ -22,7 +22,14 @@ data class RoomEntity(
     val createdAtEpochMs: Long,
     val expiresAtEpochMs: Long,
     /** Server identity (Firebase anonymous-auth uid) of the creator; null for local-only rooms. */
-    val ownerUid: String? = null
+    val ownerUid: String? = null,
+    /** Ranked-choice room: each voter orders options; decided by instant runoff. */
+    val isRanked: Boolean = false,
+    /** Weekly recurring poll: the server opens a fresh room every 7 days. */
+    val repeatWeekly: Boolean = false,
+    val seriesId: String? = null,
+    /** Set by the server when next week's room of this series opens. */
+    val nextRoomCode: String? = null
 )
 
 @Entity(
@@ -73,7 +80,9 @@ data class VoteEntity(
     val voterName: String,
     val voterBadgeColorIndex: Int,
     val voterAvatarStyleIndex: Int = 0,
-    val votedAtEpochMs: Long
+    val votedAtEpochMs: Long,
+    /** Position in the voter's ranking (0 = first choice); 0 for non-ranked rooms. */
+    val rank: Int = 0
 )
 
 @Entity(

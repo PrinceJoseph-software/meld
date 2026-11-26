@@ -3,25 +3,82 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/((?!\\.well-known/|assets/|fonts/|icons/|sw\\.js|workbox-|manifest\\.webmanifest|favicon\\.png).*)", "destination": "/index.html" }
+    {
+      "source": "/cal/:code.ics",
+      "destination": "/api/ics?code=:code"
+    },
+    {
+      "source": "/cal/series/:id.ics",
+      "destination": "/api/ics?series=:id"
+    },
+    {
+      "source": "/((?!api/|\\.well-known/|assets/|fonts/|icons/|sw\\.js|workbox-|manifest\\.webmanifest|favicon\\.png).*)",
+      "destination": "/index.html"
+    }
   ],
   "headers": [
     {
       "source": "/.well-known/assetlinks.json",
-      "headers": [{ "key": "Content-Type", "value": "application/json" }]
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        }
+      ]
     },
     {
       "source": "/sw.js",
-      "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
     },
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Permissions-Policy", "value": "camera=(), geolocation=(), microphone=(self)" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), geolocation=(), microphone=(self)"
+        }
       ]
+    },
+    {
+      "source": "/((?!embed/).*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors 'none'"
+        }
+      ]
+    },
+    {
+      "source": "/embed/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors *"
+        }
+      ]
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/recurring",
+      "schedule": "17 7 * * *"
     }
   ]
 }

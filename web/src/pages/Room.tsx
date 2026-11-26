@@ -3,17 +3,23 @@ import { TopBar } from '../components/Logo';
 import { AvatarStack, GeometricAvatar } from '../components/GeometricAvatar';
 import { Burst, DeadlineBanner, PushArena, type ArenaOption } from '../components/Arena';
 import { PresentStage } from '../components/PresentStage';
+import { Integrations } from '../components/Integrations';
+import { renderCard, shareOrDownloadCard } from '../card';
+import { downloadIcs, feedUrls, googleCalendarUrl } from '../calendar';
+import { computeResults } from '../shared/tally';
 import { Qr } from '../components/Qr';
 import { ensureSignedIn } from '../firebase';
 import { effectiveLook, getIdentity, rememberRoom } from '../identity';
 import {
   addComment,
   addOption,
+  claimRoom,
   closeRoom,
   deleteComment,
   fetchAudio,
   isVotingOpen,
   MAX_AUDIO_BASE64,
+  pingDecision,
   reopenRoom,
   resetVotes,
   setMyBallot,
@@ -31,35 +37,44 @@ function formatRemaining(ms: number) {
   return h > 0 ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}:${String(sec).padStart(2, '0')}`;
 }
 
-export function RoomPage({ code }: { code: string | null }) {
+export function RoomPage({ code, embedded = false }: { code: string | null; embedded?: boolean }) {
   const [state, setState] = useState<RoomState | null>(null);
   const [missing, setMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authUid, setAuthUid] = useState<string | null>(null);
+  const [claimMsg, setClaimMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!code) return;
     ensureSignedIn().then(setAuthUid).catch(() => {});
+    // Claim link from Slack/Discord: /r/CODE?claim=TOKEN makes this device the owner.
+    const token = new URLSearchParams(location.search).get('claim');
+    if (token) {
+      history.replaceState(null, '', location.pathname);
+      claimRoom(code, token)
+        .then((ok) => setClaimMsg(ok ? 'You now manage this poll from this device.' : 'That manage link was already used or is invalid.'))
+        .catch(() => setClaimMsg("Couldn't claim the poll. Are you online?"));
+    }
     return watchRoom(
       code,
       (s) => {
         setState(s);
-        rememberRoom(code, s.room.question);
+        if (!embedded) rememberRoom(code, s.room.question);
       },
       () => setMissing(true),
       (e) => setError(e.message),
     );
-  }, [code]);
+  }, [code, embedded]);
 
   if (!code || missing) {
     return (
       <>
-        <TopBar />
+        {!embedded && <TopBar />}
         <section className="panel">
           <div className="eyebrow">Room not found</div>
           <h1 className="title">That code doesn't exist</h1>
           <p className="muted">Check the code with whoever shared it.</p>
-          <button className="btn primary" onClick={() => navigate('/')}>Back home</button>
+          {!embedded && <button className="btn primary" onClick={() => navigate('/')}>Back home</button>}
         </section>
       </>
     );
@@ -67,7 +82,7 @@ export function RoomPage({ code }: { code: string | null }) {
   if (!state) {
     return (
       <>
-        <TopBar />
+        {!embedded && <TopBar />}
         <section className="panel" aria-busy="true">
           <div className="eyebrow mono">{code}</div>
           <p className="muted">{error ? `Couldn't load this room. ${navigator.onLine ? '' : "You're offline and it isn't saved on this device yet."}` : 'Loading room…'}</p>
@@ -75,16 +90,23 @@ export function RoomPage({ code }: { code: string | null }) {
       </>
     );
   }
-  return <RoomView state={state} authUid={authUid} />;
+  return (
+    <>
+      {claimMsg && <div className="banner" role="status">{claimMsg}</div>}
+      <RoomView state={state} authUid={authUid} embedded={embedded} />
+    </>
+  );
 }
 
-function RoomView({ state, authUid }: { state: RoomState; authUid: string | null }) {
+function RoomView({ state, authUid, embedded }: { state: RoomState; authUid: string | null; embedded: boolean }) {
   const { room, options, ballots, comments } = state;
   const now = useNow(1000, room.deadlineEpochMs != null && !room.isLocked);
   const open = isVotingOpen(room, now);
+  const ranked = Boolean(room.isRanked);
   const isOwner = authUid != null && room.ownerUid === authUid;
   const myBallot = ballots.find((b) => b.authUid === authUid);
-  const mine = new Set(myBallot?.optionIds ?? []);
+  const myRanking = myBallot?.optionIds ?? [];
+  const mine = new Set(myRanking);
   const [shareOpen, setShareOpen] = useState(false);
   const [presenting, setPresenting] = useState(false);
   const [newOption, setNewOption] = useState('');
@@ -96,55 +118,67 @@ function RoomView({ state, authUid }: { state: RoomState; authUid: string | null
     wasOpen.current = open;
   }, [open]);
 
-  const counts = useMemo(() => {
-    const c = new Map<string, number>();
-    ballots.forEach((b) => b.optionIds.forEach((id) => c.set(id, (c.get(id) ?? 0) + 1)));
-    return c;
-  }, [ballots]);
-  const total = [...counts.values()].reduce((a, b) => a + b, 0);
-  const max = Math.max(0, ...counts.values());
-  const leaders = options.filter((o) => max > 0 && (counts.get(o.id) ?? 0) === max);
-  // A passed deadline closes the room for everyone; the top option wins (first on ties).
-  const winnerId = room.winnerOptionId ?? (!open && leaders[0] ? leaders[0].id : null);
+  // Room looks closed and no one has announced it yet: ask the server to (it re-checks).
+  useEffect(() => {
+    if (!open && !room.notifiedAt && !state.fromCache) pingDecision(room.code);
+  }, [open, room.notifiedAt, room.code, state.fromCache]);
 
-  const sorted = [...options].sort((a, b) => (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0) || a.sortOrder - b.sortOrder);
+  const results = useMemo(
+    () => computeResults(ranked, options, ballots.map((b) => b.optionIds)),
+    [ranked, options, ballots],
+  );
+  const counts = results.counts;
+  const total = results.total;
+  // Closed room: the owner's pick, else the computed result (instant-runoff for ranked).
+  const winnerId = room.winnerOptionId ?? (!open ? results.leaderId : null);
+  const leaders = results.tiedLeaders.length > 1 ? results.tiedLeaders : results.leaderId ? [results.leaderId] : [];
+  const labelOf = (id: string) => options.find((o) => o.id === id)?.label ?? '?';
+
+  const sorted = [...options].sort((a, b) => (counts[b.id] ?? 0) - (counts[a.id] ?? 0) || a.sortOrder - b.sortOrder);
   const shareUrl = `${location.origin}/r/${room.code}`;
 
   const vote = (optionId: string, direction?: 'yes' | 'no') => {
     if (!open) return;
-    const next = new Set(mine);
-    const want = direction ? direction === 'yes' : !next.has(optionId);
-    if (!room.allowMultiple && want) next.clear();
-    if (want) next.add(optionId); else next.delete(optionId);
-    if (want && !mine.has(optionId)) {
+    const has = mine.has(optionId);
+    const want = direction ? direction === 'yes' : !has;
+    let next: string[];
+    if (ranked) {
+      // Ranking order = order you pick them in; picking again removes it.
+      next = want ? (has ? myRanking : [...myRanking, optionId]) : myRanking.filter((id) => id !== optionId);
+    } else {
+      const set = new Set(myRanking);
+      if (!room.allowMultiple && want) set.clear();
+      if (want) set.add(optionId); else set.delete(optionId);
+      next = [...set];
+    }
+    if (want && !has) {
       setBurst((b) => b + 1);
       setMyPulse((p) => p + 1);
     }
-    setMyBallot(room, [...next]);
+    setMyBallot(room, next);
   };
 
-  const arenaOptions: ArenaOption[] = sorted.map((o) => ({
-    id: o.id,
-    label: o.label,
-    count: counts.get(o.id) ?? 0,
-    voters: ballots.filter((b) => b.optionIds.includes(o.id)).map((b) => ({
-      key: b.authUid, name: b.voterName, avatarStyleIndex: b.avatarStyleIndex ?? 0, colorIndex: b.badgeColorIndex,
-    })),
-  }));
+  const votersFor = (id: string) => ballots
+    .filter((b) => (ranked ? b.optionIds[0] === id : b.optionIds.includes(id)))
+    .map((b) => ({ key: b.authUid, name: b.voterName, avatarStyleIndex: b.avatarStyleIndex ?? 0, colorIndex: b.badgeColorIndex }));
+  const arenaOptions: ArenaOption[] = sorted.map((o) => ({ id: o.id, label: o.label, count: counts[o.id] ?? 0, voters: votersFor(o.id) }));
   const myLook = effectiveLook(getIdentity(), room.isAnonymous);
+  const howToVote = ranked ? 'rank in order of preference' : room.allowMultiple ? 'pick any' : 'pick one';
 
   return (
     <>
-      <TopBar
-        right={
-          <div className="row" style={{ gap: 6 }}>
-            <button className="btn small ghost" onClick={() => setPresenting(true)} aria-label="Present full screen">Present</button>
-            <button className="btn small" onClick={() => setShareOpen((v) => !v)} aria-expanded={shareOpen}>
-              Share <span className="mono">{room.code}</span>
-            </button>
-          </div>
-        }
-      />
+      {!embedded && (
+        <TopBar
+          right={
+            <div className="row" style={{ gap: 6 }}>
+              <button className="btn small ghost" onClick={() => setPresenting(true)} aria-label="Present full screen">Present</button>
+              <button className="btn small" onClick={() => setShareOpen((v) => !v)} aria-expanded={shareOpen}>
+                Share <span className="mono">{room.code}</span>
+              </button>
+            </div>
+          }
+        />
+      )}
       <Burst trigger={burst} />
       {presenting && (
         <PresentStage
@@ -158,18 +192,26 @@ function RoomView({ state, authUid }: { state: RoomState; authUid: string | null
         />
       )}
 
+      {room.nextRoomCode && (
+        <a className="banner row between" href={`/r/${room.nextRoomCode}`} onClick={(e) => { if (!embedded) { e.preventDefault(); navigate(`/r/${room.nextRoomCode}`); } }} style={{ textDecoration: 'none' }}>
+          <span><strong>This week's poll is open.</strong> This one is from last week.</span>
+          <span className="accent mono">{room.nextRoomCode} ›</span>
+        </a>
+      )}
+
       {shareOpen && <SharePanel room={room} url={shareUrl} />}
 
       <section className="panel">
         <div className="row between">
-          <span className="eyebrow">{room.mode === 'TIME_SLOTS' ? 'Time slots' : 'Quick poll'}{room.isAnonymous ? ' · anonymous' : ''}</span>
+          <span className="eyebrow">
+            {room.mode === 'TIME_SLOTS' ? 'Time slots' : 'Quick poll'}{ranked ? ' · ranked' : ''}{room.isAnonymous ? ' · anonymous' : ''}{room.seriesId ? ' · weekly' : ''}
+          </span>
           <Status room={room} open={open} now={now} synced={!state.fromCache && !state.hasPendingWrites} />
         </div>
         <h1 className="title">{room.question}</h1>
         <p className="small muted" style={{ margin: 0 }}>
-          {total} vote{total === 1 ? '' : 's'} · {ballots.length} voter{ballots.length === 1 ? '' : 's'}
-          {room.allowMultiple ? ' · pick any' : ' · pick one'}
-          {open && ' · swipe → to vote, ← to drop'}
+          {ballots.length} voter{ballots.length === 1 ? '' : 's'} · {howToVote}
+          {open && (ranked ? ' · tap options in order, tap again to remove' : ' · swipe → to vote, ← to drop')}
         </p>
         <div className="row" style={{ marginTop: 12, gap: 10 }}>
           <GeometricAvatar avatarStyleIndex={myLook.avatarStyleIndex} colorIndex={myLook.badgeColorIndex} size={36} reactionTrigger={myPulse} pushBias={myBallot ? 1 : 0} />
@@ -182,20 +224,27 @@ function RoomView({ state, authUid }: { state: RoomState; authUid: string | null
         )}
       </section>
 
-      <PushArena options={arenaOptions} total={total} locked={!open} winnerId={winnerId} />
+      {!embedded && <PushArena options={arenaOptions} total={total} locked={!open} winnerId={winnerId} />}
 
       <section className="panel stack" aria-label="Options">
+        {ranked && myRanking.length > 0 && (
+          <div className="ranking row between small">
+            <span>Your ranking: {myRanking.map((id, i) => <span key={id} className="mono">{i > 0 ? ' › ' : ''}{i + 1}. {labelOf(id)}</span>)}</span>
+            {open && <button className="btn small ghost" onClick={() => setMyBallot(room, [])}>Clear</button>}
+          </div>
+        )}
         {sorted.map((o) => {
-          const count = counts.get(o.id) ?? 0;
-          const arena = arenaOptions.find((x) => x.id === o.id)!;
+          const count = counts[o.id] ?? 0;
+          const rank = ranked ? myRanking.indexOf(o.id) : -1;
           return (
             <OptionCard
               key={o.id}
               label={o.label}
               count={count}
               pct={total > 0 ? Math.round((count / total) * 100) : 0}
-              voters={arena.voters}
+              voters={votersFor(o.id)}
               mine={mine.has(o.id)}
+              rank={rank >= 0 ? rank + 1 : null}
               winner={winnerId === o.id}
               open={open}
               onVote={(dir) => vote(o.id, dir)}
@@ -203,7 +252,21 @@ function RoomView({ state, authUid }: { state: RoomState; authUid: string | null
           );
         })}
 
-        {open && (room.allowFriendsToAdd || isOwner) && options.length < 20 && (
+        {ranked && results.irv && results.irv.rounds.length > 1 && (
+          <details className="rounds">
+            <summary className="small">How the ranked count worked ({results.irv.rounds.length} rounds)</summary>
+            <ol className="small muted">
+              {results.irv.rounds.map((r, i) => (
+                <li key={i}>
+                  {Object.entries(r.counts).sort((x, y) => y[1] - x[1]).map(([id, n]) => `${labelOf(id)} ${n}`).join(' · ')}
+                  {r.eliminated ? ` → ${labelOf(r.eliminated)} eliminated, its votes move to next choices` : results.irv!.winnerId ? ` → ${labelOf(results.irv!.winnerId)} has a majority` : ''}
+                </li>
+              ))}
+            </ol>
+          </details>
+        )}
+
+        {open && !embedded && (room.allowFriendsToAdd || isOwner) && options.length < 20 && (
           <form
             className="row"
             onSubmit={(e) => {
@@ -219,13 +282,23 @@ function RoomView({ state, authUid }: { state: RoomState; authUid: string | null
         )}
       </section>
 
-      {isOwner && (
+      {!open && !embedded && (
+        <Outcome room={room} options={options} counts={counts} total={total} ballots={ballots} winnerId={winnerId} tie={results.tiedLeaders.length > 1 || Boolean(results.irv?.tie)} rounds={results.irv?.rounds.length ?? 0} />
+      )}
+
+      {embedded && (
+        <p className="small muted" style={{ textAlign: 'center' }}>
+          <a href={shareUrl} target="_blank" rel="noreferrer">Open in Meld</a> · code <span className="mono">{room.code}</span>
+        </p>
+      )}
+
+      {isOwner && !embedded && (
         <section className="panel">
           <div className="eyebrow">You created this room</div>
           <div className="chips" style={{ marginTop: 10 }}>
             {open ? (
-              <button className="btn small primary" disabled={total === 0} onClick={() => closeRoom(room, leaders[0]?.id ?? null)}>
-                Close &amp; crown leader
+              <button className="btn small primary" disabled={total === 0} onClick={() => { closeRoom(room, results.leaderId); }}>
+                Close &amp; crown {ranked ? 'winner' : 'leader'}
               </button>
             ) : (
               <button className="btn small" onClick={() => reopenRoom(room)}>Reopen voting</button>
@@ -238,12 +311,64 @@ function RoomView({ state, authUid }: { state: RoomState; authUid: string | null
               Reset votes
             </button>
           </div>
-          {open && leaders.length > 1 && <p className="small muted">It's a tie between {leaders.map((l) => l.label).join(' and ')}.</p>}
+          {open && leaders.length > 1 && <p className="small muted">It's a tie between {leaders.map(labelOf).join(' and ')}.</p>}
         </section>
       )}
+      {isOwner && !embedded && <Integrations room={room} />}
 
-      <Opinions room={room} comments={comments} options={options} open={open} isOwner={isOwner} authUid={authUid} />
+      {!embedded && <Opinions room={room} comments={comments} options={options} open={open} isOwner={isOwner} authUid={authUid} />}
     </>
+  );
+}
+
+/** After the decision: add the winning slot to a calendar, and export a shareable image card. */
+function Outcome({ room, options, counts, total, ballots, winnerId, tie, rounds }: {
+  room: Room; options: RoomState['options']; counts: Record<string, number>; total: number;
+  ballots: RoomState['ballots']; winnerId: string | null; tie: boolean; rounds: number;
+}) {
+  const [busy, setBusy] = useState(false);
+  const winner = options.find((o) => o.id === winnerId) ?? null;
+  const url = `${location.origin}/r/${room.code}`;
+  const details = `Decided in Meld: ${winner?.label ?? ''}\n${url}`;
+  const slot = winner?.slotStartMs ? { start: winner.slotStartMs, end: winner.slotEndMs ?? winner.slotStartMs + 3_600_000 } : null;
+  const feeds = feedUrls(room.code, room.seriesId);
+
+  const exportCard = async () => {
+    setBusy(true);
+    try {
+      const pct = (id: string) => (total > 0 ? Math.round(((counts[id] ?? 0) / total) * 100) : 0);
+      const blob = await renderCard({
+        code: room.code,
+        url,
+        question: room.question,
+        modeLabel: `${room.mode === 'TIME_SLOTS' ? 'Time slots' : 'Quick poll'}${room.isRanked ? ' · ranked' : ''}`,
+        decided: true,
+        winner: winner ? { label: winner.label, votes: counts[winner.id] ?? 0, pct: pct(winner.id) } : null,
+        rows: [...options].sort((a, b) => (counts[b.id] ?? 0) - (counts[a.id] ?? 0)).map((o) => ({ label: o.label, votes: counts[o.id] ?? 0, pct: pct(o.id), isWinner: o.id === winnerId })),
+        voters: ballots.filter((b) => winner && (room.isRanked ? b.optionIds[0] === winner.id : b.optionIds.includes(winner.id))).map((b) => ({ avatarStyleIndex: b.avatarStyleIndex ?? 0, colorIndex: b.badgeColorIndex })),
+        totalVoters: ballots.length,
+        note: room.isRanked && rounds > 1 ? `after ${rounds} rounds` : tie ? 'tie-break' : undefined,
+        dark: matchMedia('(prefers-color-scheme: dark)').matches,
+      });
+      await shareOrDownloadCard(blob, room.code);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="panel stack">
+      <div className="eyebrow" style={{ color: 'var(--emerald)' }}>Decision</div>
+      <div style={{ fontWeight: 700, fontSize: 22 }}>{winner ? winner.label : 'No votes were cast'}</div>
+      {slot && (
+        <div className="chips">
+          <a className="btn small" href={googleCalendarUrl(room.question, slot.start, slot.end, details)} target="_blank" rel="noreferrer">Add to Google Calendar</a>
+          <button className="btn small" onClick={() => downloadIcs(room.code, room.question, slot.start, slot.end, details)}>Apple / Outlook (.ics)</button>
+          <a className="btn small ghost" href={feeds.apple} title="Subscribe: future decisions appear automatically">Subscribe</a>
+        </div>
+      )}
+      <button className="btn primary" disabled={busy} onClick={exportCard}>{busy ? 'Making your card…' : 'Share result card'}</button>
+    </section>
   );
 }
 
@@ -415,8 +540,8 @@ function blobToBase64(blob: Blob): Promise<string> {
 }
 
 /** Option card: tap to toggle, or swipe right to vote / left to withdraw (like the app). */
-function OptionCard({ label, count, pct, voters, mine, winner, open, onVote }: {
-  label: string; count: number; pct: number; voters: ArenaOption['voters']; mine: boolean; winner: boolean; open: boolean;
+function OptionCard({ label, count, pct, voters, mine, rank = null, winner, open, onVote }: {
+  label: string; count: number; pct: number; voters: ArenaOption['voters']; mine: boolean; rank?: number | null; winner: boolean; open: boolean;
   onVote: (dir?: 'yes' | 'no') => void;
 }) {
   const [dx, setDx] = useState(0);
@@ -450,6 +575,7 @@ function OptionCard({ label, count, pct, voters, mine, winner, open, onVote }: {
       className={`option${mine ? ' mine' : ''}${winner ? ' winner' : ''}${dx ? ' dragging' : ''}`}
       disabled={!open}
       aria-pressed={mine}
+      aria-label={rank ? `${label}, your choice number ${rank}` : undefined}
       style={{ transform: dx ? `translateX(${dx}px) rotate(${dx / 40}deg)` : undefined, touchAction: 'pan-y' }}
       onPointerDown={onDown}
       onPointerMove={onMove}
@@ -464,7 +590,7 @@ function OptionCard({ label, count, pct, voters, mine, winner, open, onVote }: {
       <span className="swipe-hint yes" style={{ opacity: Math.max(0, dx) / THRESHOLD }}>VOTE ›</span>
       <span className="swipe-hint no" style={{ opacity: Math.max(0, -dx) / THRESHOLD }}>‹ DROP</span>
       <span className="content" style={{ opacity: dx ? 0.35 + 0.65 * (1 - Math.min(1, Math.abs(dx) / 140)) : 1 }}>
-        <span className="check" aria-hidden="true">{mine ? '✓' : ''}</span>
+        <span className={`check${rank ? ' ranked' : ''}`} aria-hidden="true">{rank ?? (mine ? '✓' : '')}</span>
         <span className="grow">
           <span style={{ fontWeight: 600, display: 'block' }}>{winner ? '★ ' : ''}{label}</span>
           {voters.length > 0 && <span style={{ display: 'block', marginTop: 6 }}><AvatarStack voters={voters} size={26} /></span>}

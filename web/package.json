@@ -8,15 +8,21 @@
     "prebuild": "node scripts/write-assetlinks.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b && tsc -p tsconfig.api.json",
+    "test": "node --experimental-strip-types --test test/tally.test.ts",
+    "test:api": "npm run build:api && cd .. && firebase emulators:exec --only firestore,auth --project demo-meld \"node --test web/test/api.test.mjs\"",
+    "build:api": "node scripts/build-api-test.mjs"
   },
   "dependencies": {
+    "@vercel/functions": "^3.11.4",
     "firebase": "^11.10.0",
+    "firebase-admin": "^13.10.0",
     "qrcode": "^1.5.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@types/node": "^22.20.7",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",

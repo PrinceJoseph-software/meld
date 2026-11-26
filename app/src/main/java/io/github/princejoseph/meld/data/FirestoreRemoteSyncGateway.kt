@@ -68,6 +68,20 @@ class FirestoreRemoteSyncGateway private constructor(
             batch.set(room(room.id).collection(OPTIONS).document(opt.id), optionToMap(opt, uid), SetOptions.merge())
         }
         batch.commit().addOnFailureListener { Log.w(TAG, "pushRoom ${room.id} failed", it) }
+        val seriesId = room.seriesId
+        if (room.repeatWeekly && seriesId != null) {
+            // Created once; later pushes are rejected by the rules (only the server advances it).
+            db.collection(SERIES).document(seriesId).set(
+                mapOf(
+                    "ownerUid" to ownerUid,
+                    "latestCode" to seriesId,
+                    "active" to true,
+                    "intervalDays" to 7,
+                    "nextRunAt" to room.createdAtEpochMs + 7L * 24 * 3_600_000,
+                    "createdAtEpochMs" to room.createdAtEpochMs
+                )
+            )
+        }
     }
 
     override suspend fun pushRoomState(room: RoomEntity) {
@@ -248,7 +262,11 @@ class FirestoreRemoteSyncGateway private constructor(
             isLocked = roomDoc.getBoolean("isLocked") ?: false,
             createdAtEpochMs = roomDoc.getLong("createdAtEpochMs") ?: System.currentTimeMillis(),
             expiresAtEpochMs = roomDoc.getLong("expiresAtEpochMs") ?: System.currentTimeMillis(),
-            ownerUid = roomDoc.getString("ownerUid")
+            ownerUid = roomDoc.getString("ownerUid"),
+            isRanked = roomDoc.getBoolean("isRanked") ?: false,
+            repeatWeekly = roomDoc.getBoolean("repeatWeekly") ?: false,
+            seriesId = roomDoc.getString("seriesId"),
+            nextRoomCode = roomDoc.getString("nextRoomCode")
         )
         val optionEntities = options.documents.mapNotNull { d ->
             OptionEntity(
@@ -272,7 +290,8 @@ class FirestoreRemoteSyncGateway private constructor(
                 voterName = sanitizeMeldInput(d.getString("voterName") ?: "Guest", 28),
                 badgeColorIndex = (d.getLong("badgeColorIndex") ?: 0L).toInt(),
                 avatarStyleIndex = (d.getLong("avatarStyleIndex") ?: 0L).toInt(),
-                optionIds = if (room.allowMultiple) ids else ids.take(1),
+                // Ranked rooms: the list order is the voter's ranking (best first).
+                optionIds = if (room.allowMultiple || room.isRanked) ids else ids.take(1),
                 updatedAtEpochMs = d.getLong("updatedAtEpochMs") ?: 0L
             )
         }
@@ -311,6 +330,10 @@ class FirestoreRemoteSyncGateway private constructor(
         "createdAtEpochMs" to room.createdAtEpochMs,
         "expiresAtEpochMs" to room.expiresAtEpochMs,
         "updatedAtEpochMs" to System.currentTimeMillis(),
+        "isRanked" to room.isRanked,
+        "repeatWeekly" to room.repeatWeekly,
+        "seriesId" to room.seriesId,
+        "source" to "app",
         "schemaVersion" to SCHEMA_VERSION
     )
 
@@ -329,6 +352,7 @@ class FirestoreRemoteSyncGateway private constructor(
         private const val BALLOTS = "ballots"
         private const val COMMENTS = "comments"
         private const val AUDIO = "audio"
+        private const val SERIES = "series"
         private const val SCHEMA_VERSION = 1
         private const val SIGN_IN_TIMEOUT_MS = 10_000L
         private const val FETCH_TIMEOUT_MS = 12_000L

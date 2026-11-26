@@ -161,6 +161,7 @@ private fun MeldAppShell(
     val selectedLang by viewModel.selectedLanguage.collectAsStateWithLifecycle()
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsStateWithLifecycle()
     val hasCompletedOnboarding by viewModel.hasCompletedOnboarding.collectAsStateWithLifecycle()
+    val autoCalendar by viewModel.autoCalendar.collectAsStateWithLifecycle()
 
     LaunchedEffect(selectedLang) {
         val lang = selectedLang ?: return@LaunchedEffect
@@ -276,6 +277,9 @@ private fun MeldAppShell(
                             onAllowMultipleChange = viewModel::setAllowMultiple,
                             onAllowFriendsChange = viewModel::setAllowFriendsToAdd,
                             onAnonymousChange = viewModel::setIsAnonymous,
+                            onRankedChange = viewModel::setIsRanked,
+                            onRepeatWeeklyChange = viewModel::setRepeatWeekly,
+                            cloudEnabled = viewModel.isCloudEnabled,
                             onDeadlineMinutesChange = viewModel::setDeadlineMinutes,
                             onSyncDeviceCalendar = viewModel::syncFromDeviceCalendar,
                             onImportIcsUri = viewModel::syncFromIcsUri,
@@ -309,6 +313,7 @@ private fun MeldAppShell(
                             onDeadlineExpired = viewModel::finalizeExpiredRoom,
                             onToggleSimulatedOffline = viewModel::toggleSimulatedOffline,
                             onSimulateFriends = viewModel::simulateThreeFriends,
+                            onOpenRoom = viewModel::openRoom,
                             onBuildResultSummary = viewModel::buildResultSummary,
                             onAddVoiceComment = viewModel::addVoiceComment,
                             onDeleteVoiceComment = viewModel::deleteVoiceComment,
@@ -374,6 +379,8 @@ private fun MeldAppShell(
             onSaveAnonymousBadge = viewModel::updateAnonymousBadge,
             onToggleDarkTheme = { viewModel.toggleTheme(isDark) },
             onToggleHaptics = viewModel::setHapticsEnabled,
+            autoCalendar = autoCalendar,
+            onToggleAutoCalendar = viewModel::setAutoCalendar,
             onOpenHistory = { showHistorySheet = true },
             onOpenLanguageSelector = { showLanguageSheet = true },
             onOpenFeatureTour = { showOnboardingTour = true },

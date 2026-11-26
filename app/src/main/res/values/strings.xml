@@ -233,10 +233,6 @@
     <string name="stage_votes_count">%1$d votes live</string>
     <string name="stage_share_hint">Share your screen in Meet/Zoom or send a live poll card</string>
 
-    <!-- Anonymous IP Lock -->
-    <string name="anon_ip_locked_badge">IP LOCK • %1$s</string>
-    <string name="anon_ip_lock_notice">Anonymous voting is locked to your network IP to prevent duplicate ballots.</string>
-
     <!-- Settings & Anonymous Badge Customization -->
     <string name="settings_title">Settings &amp; Identity</string>
     <string name="settings_subtitle">Anonymous disguise, preferences &amp; theme</string>
@@ -294,4 +290,18 @@
     <string name="error_empty_question">Enter a question to start</string>
     <string name="error_min_options">Add at least 2 options</string>
     <string name="error_room_unavailable">Room %1$s isn\'t available. Check the code or your internet connection.</string>
+    <!-- Ranked choice, weekly polls, integrations -->
+    <string name="setting_ranked_choice">Ranked choice (instant runoff)</string>
+    <string name="setting_repeat_weekly">Repeat every week</string>
+    <string name="ranked_hint">Ranked choice · tap options in order of preference, tap again to remove</string>
+    <string name="ranked_rounds">Decided by instant runoff in %1$d rounds</string>
+    <string name="ranked_tie_note">Tied in the final round · broken by overall preference</string>
+    <string name="weekly_badge">Repeats weekly</string>
+    <string name="next_poll_open">This week\'s poll is open</string>
+    <string name="next_poll_open_action">Open %1$s</string>
+    <string name="settings_auto_calendar_title">Add decided times to my calendar</string>
+    <string name="settings_auto_calendar_subtitle">When a time-slot poll you joined is decided</string>
+    <string name="error_create_failed">Couldn\'t create the room. Please try again.</string>
+    <string name="card_after_rounds">after %1$d rounds</string>
+    <string name="action_share_result_card">Share result card</string>
 </resources>

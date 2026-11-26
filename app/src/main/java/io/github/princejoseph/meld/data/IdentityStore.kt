@@ -33,6 +33,8 @@ class IdentityStore(private val context: Context) {
         val ANONYMOUS_MASK_NAME = stringPreferencesKey("anonymous_mask_name")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val HAS_COMPLETED_ONBOARDING = booleanPreferencesKey("has_completed_onboarding")
+        val AUTO_CALENDAR = booleanPreferencesKey("auto_add_decisions_to_calendar")
+        val CALENDAR_ADDED = stringSetPreferencesKey("calendar_added_rooms")
     }
 
     val hasCompletedOnboardingFlow: Flow<Boolean> = context.meldDataStore.data.map { prefs ->
@@ -41,6 +43,27 @@ class IdentityStore(private val context: Context) {
 
     val selectedLanguageFlow: Flow<String> = context.meldDataStore.data.map { prefs ->
         prefs[Keys.SELECTED_LANGUAGE] ?: "en"
+    }
+
+    val autoCalendarFlow: Flow<Boolean> = context.meldDataStore.data.map { prefs ->
+        prefs[Keys.AUTO_CALENDAR] ?: false
+    }
+
+    suspend fun setAutoCalendar(enabled: Boolean) {
+        context.meldDataStore.edit { it[Keys.AUTO_CALENDAR] = enabled }
+    }
+
+    /** Marks a room's decided slot as added to the calendar; false if it already was. */
+    suspend fun markCalendarAdded(roomId: String): Boolean {
+        var added = false
+        context.meldDataStore.edit { prefs ->
+            val current = prefs[Keys.CALENDAR_ADDED].orEmpty()
+            if (roomId !in current) {
+                prefs[Keys.CALENDAR_ADDED] = (current + roomId).toList().takeLast(200).toSet()
+                added = true
+            }
+        }
+        return added
     }
 
     val hapticsEnabledFlow: Flow<Boolean> = context.meldDataStore.data.map { prefs ->

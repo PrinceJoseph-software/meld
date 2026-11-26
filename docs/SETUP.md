@@ -205,7 +205,46 @@ meld.webBaseUrl=https://meld-abc123.vercel.app
 | A non-creator tries to close the room | They don't see the controls; the server rejects it anyway |
 | Firebase → Firestore → Data | You can see `rooms/{CODE}` documents appearing |
 
+## Part 6: Turn on the server features (≈10 min)
+
+These power the Slack and Discord bots, decision webhooks, weekly polls and calendar feeds. They run as Vercel functions inside the same project (`web/api/`).
+
+### 6.1 Get a service-account key (lets the server read and write Firestore)
+1. In Firebase, go to **Project settings → Service accounts**.
+2. Click **Generate new private key**, then **Generate key**. A `.json` file downloads.
+3. ⚠️ **This file IS a secret.** It gives full access to your database.
+   - Never commit it, email it, or paste it in chat.
+   - Store it only in Vercel (next step) and a password manager.
+   - Delete the downloaded copy afterwards.
+
+### 6.2 Add server variables in Vercel
+Go to **Project → Settings → Environment Variables** and add:
+
+| Name | Value |
+|---|---|
+| `FIREBASE_SERVICE_ACCOUNT` | open the `.json` from 6.1 in a text editor, copy **everything**, paste |
+| `PUBLIC_BASE_URL` | your site URL, e.g. `https://meld-abc123.vercel.app` (no trailing slash) |
+| `CRON_SECRET` | any long random string, e.g. from `openssl rand -hex 32`. Vercel uses it to call the scheduler |
+
+Then **Deployments → ⋯ → Redeploy**.
+
+### 6.3 Deploy the latest rules and indexes
+The weekly scheduler needs a Firestore index, and the rules gained new checks:
+```bash
+cd meld
+firebase deploy --only firestore:rules,firestore:indexes
+```
+The index takes a few minutes to build. You can watch it under Firestore → Indexes.
+
+### 6.4 Check it
+- Open `https://YOUR-APP.vercel.app/api/ics?code=XXXXXX`, using any real room code. You should see text starting `BEGIN:VCALENDAR`.
+- In Vercel, under **Project → Settings → Cron Jobs**, you should see `/api/cron/recurring` scheduled daily.
+- Next: connect Slack and Discord with **[INTEGRATIONS.md](INTEGRATIONS.md)**.
+
+---
+
 ## Keeping an eye on it
+- **Vercel → Logs:** server-function errors show up here, for example a webhook that couldn't be delivered.
 - **Firebase → Usage and billing:** the free tier allows 50,000 reads and 20,000 writes per day. One vote is about one write; each person watching a room reads once per change.
 - If you outgrow it, the **Blaze** plan is pay-as-you-go. Set a **budget alert** first, under Google Cloud → Billing → Budgets.
 - **Vercel → Analytics** is off by default. Leave it off if you want to keep the no-analytics promise.
