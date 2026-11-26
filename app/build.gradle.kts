@@ -1,4 +1,4 @@
-import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+﻿import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
 
 plugins {
   alias(libs.plugins.android.application)
@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-  namespace = "com.example"
+  namespace = "io.github.princejoseph.meld"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {

@@ -57,7 +57,7 @@ Built natively on Android with **Jetpack Compose**, **Kotlin Coroutines & Flow**
 ## Architecture & Project Structure
 
 ```text
-app/src/main/java/com/example/
+app/src/main/java/io/github/princejoseph/meld/
 ├── data/               # Room entities/DAO/DB, DataStore IdentityStore, MeldRepository,
 │                       # CalendarSync (.ics & device), ConsensusInsightCalculator,
 │                       # ConflictDetector, AnonymousSpamGuard, ConnectivityObserver
