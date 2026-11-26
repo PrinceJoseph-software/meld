@@ -148,6 +148,8 @@ fun CreateRoomScreen(
     onQuestionChange: (String) -> Unit,
     onQuestionVoiceChange: (String?, Int) -> Unit = { _, _ -> },
     onOptionChange: (String, String) -> Unit,
+    onOptionTimePicked: (optionId: String, label: String, startMs: Long) -> Unit =
+        { id, label, _ -> onOptionChange(id, label) },
     onAddOptionAfter: (String?) -> Unit,
     onConsumeOptionFocus: () -> Unit,
     onRemoveOption: (String) -> Unit,
@@ -171,6 +173,25 @@ fun CreateRoomScreen(
     val colors = MeldTheme.colors
     val view = LocalView.current
     val scrollState = rememberScrollState()
+
+    // Deadline alerts need POST_NOTIFICATIONS on Android 13+. Ask in context, the first time
+    // the user actually sets a deadline; a denial just means no alert (the poll still closes).
+    val deadlineContext = LocalContext.current
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { /* no-op: notifications are best-effort */ }
+    val setDeadlineMinutes: (Int?) -> Unit = { minutes ->
+        if (minutes != null &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                deadlineContext,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        onDeadlineMinutesChange(minutes)
+    }
 
     val emptyQuestionError = stringResource(R.string.error_empty_question)
     val minOptionsError = stringResource(R.string.error_min_options)
@@ -722,7 +743,7 @@ fun CreateRoomScreen(
                                     )
                                     .clickable {
                                         view.performTactileTick()
-                                        onDeadlineMinutesChange(mins)
+                                        setDeadlineMinutes(mins)
                                     }
                                     .padding(horizontal = 11.dp, vertical = 7.dp)
                                     .testTag("deadline_chip_${mins ?: "off"}"),
@@ -1170,10 +1191,11 @@ fun CreateRoomScreen(
                                 timeState.minute,
                                 0
                             )
+                            set(Calendar.MILLISECOND, 0)
                         }
                         val formatted = SimpleDateFormat("EEE, MMM d · h:mm a", Locale.getDefault())
                             .format(localCal.time)
-                        onOptionChange(targetId, formatted)
+                        onOptionTimePicked(targetId, formatted, localCal.timeInMillis)
                     }
                     showTimeDialog = false
                     timePickerTargetOptionId = null
@@ -1280,7 +1302,7 @@ fun CreateRoomScreen(
                         val parsed = minutesText.toIntOrNull()?.coerceIn(1, 10080)
                         if (parsed != null) {
                             view.performTactileConfirm()
-                            onDeadlineMinutesChange(parsed)
+                            setDeadlineMinutes(parsed)
                         }
                         showCustomDeadlineDialog = false
                     },

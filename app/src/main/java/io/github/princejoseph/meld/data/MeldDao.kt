@@ -137,6 +137,9 @@ interface MeldDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertVoiceComment(comment: VoiceCommentEntity)
 
+    @Query("SELECT audioFilePath FROM voice_comments WHERE roomId = :roomId AND audioFilePath IS NOT NULL")
+    suspend fun getVoiceAudioPathsForRoom(roomId: String): List<String>
+
     @Query("DELETE FROM voice_comments WHERE id = :commentId")
     suspend fun deleteVoiceComment(commentId: String)
 }

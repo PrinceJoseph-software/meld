@@ -149,6 +149,10 @@ class MeldRepository(
 
     suspend fun deleteRoom(roomId: String) {
         appContext?.let { DeadlineWorkScheduler.cancelForRoom(it, roomId) }
+        // Voice-note audio lives outside the DB; remove it so a deleted room leaves nothing behind.
+        dao.getVoiceAudioPathsForRoom(roomId).forEach { path ->
+            runCatching { java.io.File(path).delete() }
+        }
         dao.clearPendingVotesForRoom(roomId)
         dao.deleteRoom(roomId)
         _highPriorityByRoom.update { it - roomId }
@@ -221,6 +225,25 @@ class MeldRepository(
         allowFriendsToAdd: Boolean,
         isAnonymous: Boolean = false,
         deadlineMinutes: Int? = null
+    ): String = createRoom(
+        question = question,
+        mode = mode,
+        options = optionLabels.map { NewOptionSpec(it) },
+        allowMultiple = allowMultiple,
+        allowFriendsToAdd = allowFriendsToAdd,
+        isAnonymous = isAnonymous,
+        deadlineMinutes = deadlineMinutes
+    )
+
+    @JvmName("createRoomWithSpecs")
+    suspend fun createRoom(
+        question: String,
+        mode: RoomMode,
+        options: List<NewOptionSpec>,
+        allowMultiple: Boolean,
+        allowFriendsToAdd: Boolean,
+        isAnonymous: Boolean = false,
+        deadlineMinutes: Int? = null
     ): String {
         val creatorIdentity = identityStore.ensureIdentity()
         val roomId = generateRoomCode()
@@ -244,22 +267,27 @@ class MeldRepository(
             expiresAtEpochMs = now + fourteenDaysMs
         )
 
-        val options = optionLabels
-            .map { sanitizeMeldInput(it, maxLength = 140) }
-            .filter { it.isNotEmpty() }
+        val optionEntities = options
+            .map { it.copy(label = sanitizeMeldInput(it.label, maxLength = 140)) }
+            .filter { it.label.isNotEmpty() }
             .take(16)
-            .mapIndexed { idx, label ->
+            .mapIndexed { idx, spec ->
+                val validStart = spec.slotStartMs?.takeIf { mode == RoomMode.TIME_SLOTS && it > 0L }
                 OptionEntity(
                     id = "${roomId}_opt_${UUID.randomUUID().toString().take(8)}",
                     roomId = roomId,
-                    label = label,
-                    sortOrder = idx
+                    label = spec.label,
+                    sortOrder = idx,
+                    slotStartMs = validStart,
+                    slotEndMs = validStart?.let { start ->
+                        spec.slotEndMs?.takeIf { it > start } ?: (start + 60L * 60L * 1000L)
+                    }
                 )
             }
 
-        dao.createRoomWithOptions(room, options)
+        dao.createRoomWithOptions(room, optionEntities)
         identityStore.saveCreatorToken(roomId, creatorToken)
-        remoteSync.pushRoom(room, options)
+        remoteSync.pushRoom(room, optionEntities)
         if (mode == RoomMode.TIME_SLOTS) {
             _highPriorityByRoom.update { it + (roomId to setOf(creatorIdentity.uid)) }
         }
@@ -283,10 +311,11 @@ class MeldRepository(
         } else {
             options.take(2)
         }
+        val toSpec = { o: OptionEntity -> NewOptionSpec(o.label, o.slotStartMs, o.slotEndMs) }
         val runoffOptions = if (tiedLeaders.size >= 2) {
-            tiedLeaders.map { it.label }
+            tiedLeaders.map(toSpec)
         } else {
-            options.sortedByDescending { counts[it.id] ?: 0 }.take(2).map { it.label }
+            options.sortedByDescending { counts[it.id] ?: 0 }.take(2).map(toSpec)
         }
         if (runoffOptions.size < 2) return null
 
@@ -294,7 +323,7 @@ class MeldRepository(
         return createRoom(
             question = "Runoff: $cleanQuestion",
             mode = runCatching { RoomMode.valueOf(room.mode) }.getOrDefault(RoomMode.QUICK_POLL),
-            optionLabels = runoffOptions,
+            options = runoffOptions,
             allowMultiple = false,
             allowFriendsToAdd = false,
             isAnonymous = room.isAnonymous,
@@ -407,13 +436,13 @@ class MeldRepository(
             }
             is AnonymousVoteGate.BlockedDuplicateNetwork -> {
                 _anonymousLockAlertByRoom.update {
-                    it + (roomId to "Ballot locked to IP ${decision.maskedIpLabel} — one anonymous voter per network.")
+                    it + (roomId to "This device already cast an anonymous ballot in this room.")
                 }
                 false
             }
             is AnonymousVoteGate.BlockedRateLimit -> {
                 _anonymousLockAlertByRoom.update {
-                    it + (roomId to "Anti-spam cooldown (${decision.retrySeconds}s) active for IP ${decision.maskedIpLabel}.")
+                    it + (roomId to "Too many changes — try again in ${decision.retrySeconds}s.")
                 }
                 false
             }
@@ -699,7 +728,9 @@ class MeldRepository(
         )
 
         if (room.mode == RoomMode.TIME_SLOTS.name) {
-            val slotWindow = ConsensusInsightCalculator.parseSlotWindowMs(challengerOption.label)
+            val slotWindow = challengerOption.slotStartMs?.let { start ->
+                start to (challengerOption.slotEndMs ?: (start + 60L * 60L * 1000L))
+            } ?: ConsensusInsightCalculator.parseSlotWindowMs(challengerOption.label)
             if (slotWindow != null) {
                 val (slotStart, slotEnd) = slotWindow
                 _commitmentsByUid.update { current ->
@@ -945,6 +976,8 @@ class MeldRepository(
                 isWinner = isWinner,
                 isDeclinedByMe = declinedUids.contains(identity.uid),
                 declinedCount = declinedUids.size,
+                slotStartMs = opt.slotStartMs,
+                slotEndMs = opt.slotEndMs,
                 voters = if (data.room.isAnonymous) {
                     optVotes.mapIndexed { vIdx, v ->
                         val isMe = v.voterUid == identity.uid

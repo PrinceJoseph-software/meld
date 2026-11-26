@@ -177,7 +177,7 @@
     <string name="avatar_studio_title">Avatar Studio</string>
     <string name="avatar_studio_subtitle">Craft your Bauhaus badge across 67,000+ combinations</string>
     <string name="avatar_action_shuffle">Shuffle</string>
-    <string name="avatar_action_test_push">Test Push</string>
+    <string name="avatar_action_test_push">Preview</string>
     <string name="avatar_action_save">Save Identity</string>
     <string name="avatar_open_studio">Customize</string>
     <string name="avatar_tab_chassis">Chassis</string>

@@ -264,5 +264,34 @@ class ExampleUnitTest {
         val rateLimited = guard.evaluateAnonymousVote(lock, "uid-1", now + 2_000L)
         assertTrue(rateLimited is io.github.princejoseph.meld.data.AnonymousVoteGate.BlockedRateLimit)
     }
+
+    @Test
+    fun `time slots work in non-English locales`() {
+        val previous = java.util.Locale.getDefault()
+        try {
+            java.util.Locale.setDefault(java.util.Locale.FRANCE)
+            val start = java.util.Calendar.getInstance().apply {
+                set(2026, java.util.Calendar.DECEMBER, 3, 14, 0, 0)
+                set(java.util.Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val frenchLabel = java.text.SimpleDateFormat("EEE, MMM d · h:mm a", java.util.Locale.FRANCE)
+                .format(java.util.Date(start))
+
+            // Stored timestamps win, whatever the label language.
+            val opt = io.github.princejoseph.meld.data.OptionUiModel(
+                id = "o1", label = frenchLabel, sortOrder = 0, voteCount = 0, percentage = 0,
+                fraction = 0f, isVotedByMe = false, isPendingSync = false, isLeading = false,
+                isWinner = false, voters = emptyList(), slotStartMs = start
+            )
+            assertEquals(start to start + 3_600_000L, opt.slotWindowMs())
+
+            // Legacy rows (no timestamps) still parse in the device locale.
+            val legacy = io.github.princejoseph.meld.data.ConsensusInsightCalculator
+                .parseSlotWindowMs(frenchLabel, referenceNowMs = start)
+            assertEquals(start, legacy?.first)
+        } finally {
+            java.util.Locale.setDefault(previous)
+        }
+    }
 }
 
