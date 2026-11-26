@@ -41,6 +41,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -189,18 +190,30 @@ fun SettingsSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // Full-sheet dot texture; cards below are solid so text never sits on dots.
+                .draftingDotGrid(colors.dotGrid)
                 .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Header
+            // Header (solid panel over the dot texture)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(colors.surfaceElevated)
+                    .border(1.dp, colors.hairline, RoundedCornerShape(16.dp))
+                    .padding(start = 12.dp, top = 10.dp, bottom = 10.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // weight(1f) lets the title block shrink so the "Done" action keeps its width
+                // instead of being squeezed and wrapping onto two lines.
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Box(
                         modifier = Modifier
                             .size(38.dp)
@@ -221,12 +234,16 @@ fun SettingsSheet(
                             text = stringResource(R.string.settings_title),
                             fontFamily = InstrumentSerifFamily,
                             fontSize = 26.sp,
+                            lineHeight = 30.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             color = colors.inkPrimary
                         )
                         Text(
                             text = stringResource(R.string.settings_subtitle),
                             fontFamily = PlusJakartaSansFamily,
                             fontSize = 12.sp,
+                            lineHeight = 16.sp,
                             color = colors.inkSecondary
                         )
                     }
@@ -244,6 +261,8 @@ fun SettingsSheet(
                     Text(
                         text = "Done",
                         fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false,
                         color = colors.vermilion
                     )
                 }
@@ -258,10 +277,11 @@ fun SettingsSheet(
                 colors = CardDefaults.cardColors(containerColor = colors.canvas),
                 border = BorderStroke(1.dp, colors.hairline)
             ) {
+                // Solid card surface: the dot grid belongs to full-screen backgrounds only,
+                // inside a card it shows through labels and translucent buttons.
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .draftingDotGrid(colors.dotGrid)
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
