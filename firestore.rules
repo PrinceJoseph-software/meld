@@ -9,6 +9,10 @@ rules_version = '2';
 //   rooms/{code}/ballots/{authUid}   one ballot per device: optionIds
 //   rooms/{code}/comments/{id}
 //   rooms/{code}/audio/{id}          base64 voice note
+//   rooms/{code}/private/config      owner-only: webhook URL + signing secret
+//   rooms/{code}/private/claim       server-only: claim token for bot-created rooms
+//   series/{seriesId}                recurring poll template + latest room code
+// Server code (web/api, Firebase Admin SDK) bypasses these rules.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -50,7 +54,11 @@ service cloud.firestore {
       return d.keys().hasOnly([
           'question', 'mode', 'allowMultiple', 'allowFriendsToAdd', 'isAnonymous',
           'deadlineEpochMs', 'ownerUid', 'winnerOptionId', 'isLocked',
-          'createdAtEpochMs', 'expiresAtEpochMs', 'updatedAtEpochMs', 'schemaVersion'])
+          'createdAtEpochMs', 'expiresAtEpochMs', 'updatedAtEpochMs', 'schemaVersion',
+          'isRanked', 'repeatWeekly', 'seriesId', 'nextRoomCode', 'notifiedAt', 'source'])
+        && d.get('isRanked', false) is bool
+        && d.get('repeatWeekly', false) is bool
+        && (d.get('seriesId', null) == null || isShortString(d.seriesId, 10))
         && isShortString(d.question, 200) && d.question.size() > 0
         && d.mode in ['QUICK_POLL', 'TIME_SLOTS']
         && d.allowMultiple is bool && d.allowFriendsToAdd is bool && d.isAnonymous is bool
@@ -68,12 +76,17 @@ service cloud.firestore {
       allow create: if signedIn()
         && code.matches('^[A-Z0-9]{4,10}$')
         && validRoom(request.resource.data)
-        && request.resource.data.ownerUid == request.auth.uid;
+        && request.resource.data.ownerUid == request.auth.uid
+        // server-managed fields start empty
+        && request.resource.data.get('notifiedAt', null) == null
+        && request.resource.data.get('nextRoomCode', null) == null
+        && request.resource.data.get('source', 'app') in ['app', 'web'];
 
       // Only the owner changes settings / closes / reopens; ownership never moves.
       allow update: if isOwner(code)
         && validRoom(request.resource.data)
-        && request.resource.data.ownerUid == resource.data.ownerUid;
+        && !request.resource.data.diff(resource.data).affectedKeys()
+             .hasAny(['ownerUid', 'notifiedAt', 'nextRoomCode', 'seriesId', 'source', 'isRanked']);
 
       allow delete: if isOwner(code);
 
@@ -107,7 +120,10 @@ service cloud.firestore {
           && request.resource.data.optionIds is list
           && request.resource.data.optionIds.size() >= 1
           && request.resource.data.optionIds.size() <= 20
-          && (roomData(code).allowMultiple == true || request.resource.data.optionIds.size() == 1);
+          // optionIds is the voter's ranking (best first) in ranked rooms
+          && (roomData(code).allowMultiple == true
+              || roomData(code).get('isRanked', false) == true
+              || request.resource.data.optionIds.size() == 1);
 
         // Withdraw your own ballot while open; the owner may reset all ballots.
         allow delete: if signedIn()
@@ -132,6 +148,17 @@ service cloud.firestore {
           && (resource.data.authorAuthUid == request.auth.uid || isOwner(code));
       }
 
+      match /private/{docId} {
+        // Integration settings (webhook URL + secret) are visible to the owner only.
+        allow read: if isOwner(code) && docId == 'config';
+        allow write: if isOwner(code) && docId == 'config'
+          && request.resource.data.keys().hasOnly(['webhookUrl', 'webhookSecret', 'updatedAtEpochMs'])
+          && (request.resource.data.get('webhookUrl', null) == null
+              || (isShortString(request.resource.data.webhookUrl, 500)
+                  && request.resource.data.webhookUrl.matches('^https://.+')))
+          && isShortString(request.resource.data.get('webhookSecret', ''), 128);
+      }
+
       match /audio/{commentId} {
         allow read: if signedIn();
         allow create: if signedIn()
@@ -144,6 +171,25 @@ service cloud.firestore {
         allow delete: if signedIn()
           && (resource.data.authorAuthUid == request.auth.uid || isOwner(code));
       }
+    }
+
+    match /series/{seriesId} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && seriesId.matches('^[A-Z0-9]{4,10}$')
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+             'ownerUid', 'latestCode', 'active', 'intervalDays', 'nextRunAt', 'createdAtEpochMs'])
+        && request.resource.data.latestCode == seriesId
+        && request.resource.data.active == true
+        && request.resource.data.intervalDays == 7
+        && request.resource.data.nextRunAt is number;
+      // The owner may only pause/resume; the scheduler (server) advances the series.
+      allow update: if signedIn() && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active'])
+        && request.resource.data.active is bool;
+      allow delete: if false;
     }
   }
 }

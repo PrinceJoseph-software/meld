@@ -1,5 +1,7 @@
 ﻿package io.github.princejoseph.meld.ui.screens
 
+import androidx.compose.material.icons.outlined.Image
+import io.github.princejoseph.meld.ui.components.PollCardImageExporter
 import android.content.Intent
 import android.provider.CalendarContract
 import android.widget.Toast
@@ -140,6 +142,7 @@ fun DecisionRoomScreen(
     isSimulatingFriends: Boolean,
     celebrationBurstCount: Int,
     onBack: () -> Unit,
+    onOpenRoom: (String) -> Unit = {},
     onUpdateVoterProfile: (name: String, avatarStyleIndex: Int, badgeColorIndex: Int) -> Unit,
     onToggleVote: (String) -> Unit,
     onSwipeVote: (String, Boolean) -> Unit,
@@ -238,6 +241,11 @@ fun DecisionRoomScreen(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                if (room.nextRoomCode != null || room.isRanked || room.repeatWeekly) {
+                    item(key = "room_mode_notice") {
+                        RoomModeNotice(room = room, onOpenRoom = onOpenRoom)
+                    }
+                }
                 item(key = "voter_pill_header") {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -738,6 +746,26 @@ fun DecisionRoomScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         if (effectiveLocked) {
+                            // After the decision: one tap to share a polished result image.
+                            IconButton(
+                                onClick = {
+                                    view.performTactileConfirm()
+                                    PollCardImageExporter.exportAndShare(context, room)
+                                },
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(colors.surfaceElevated)
+                                    .border(1.dp, colors.hairline, RoundedCornerShape(12.dp))
+                                    .testTag("bottom_share_card_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Image,
+                                    contentDescription = stringResource(R.string.action_share_result_card),
+                                    tint = colors.inkPrimary,
+                                    modifier = Modifier.size(19.dp)
+                                )
+                            }
                             if (showExportToCalendar) {
                                 Button(
                                     onClick = {
@@ -1685,6 +1713,79 @@ private fun CreatorToolbarCard(
                         fontWeight = FontWeight.Medium,
                         fontSize = 13.sp,
                         color = colors.inkPrimary
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Weekly-series hand-off ("this week's poll is open") and the ranked-choice explainer. */
+@Composable
+private fun RoomModeNotice(room: RoomDetailsUiModel, onOpenRoom: (String) -> Unit) {
+    val colors = MeldTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        val next = room.nextRoomCode
+        if (next != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(colors.vermilion.copy(alpha = 0.12f))
+                    .border(1.dp, colors.vermilion.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                    .clickable { onOpenRoom(next) }
+                    .padding(horizontal = 14.dp, vertical = 12.dp)
+                    .testTag("next_poll_banner"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = stringResource(R.string.next_poll_open),
+                    fontFamily = PlusJakartaSansFamily,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    color = colors.inkPrimary,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = stringResource(R.string.next_poll_open_action, next),
+                    fontFamily = JetBrainsMonoFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    color = colors.vermilion
+                )
+            }
+        }
+        val lines = buildList {
+            if (room.isRanked) {
+                add(
+                    if (room.isLocked && room.rankedRounds > 1) {
+                        stringResource(R.string.ranked_rounds, room.rankedRounds)
+                    } else {
+                        stringResource(R.string.ranked_hint)
+                    }
+                )
+                if (room.isLocked && room.rankedTie) add(stringResource(R.string.ranked_tie_note))
+            }
+            if (room.repeatWeekly) add(stringResource(R.string.weekly_badge))
+        }
+        if (lines.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(colors.surfaceElevated)
+                    .border(1.dp, colors.hairline, RoundedCornerShape(14.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                lines.forEach { line ->
+                    Text(
+                        text = line,
+                        fontFamily = PlusJakartaSansFamily,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        color = colors.inkSecondary
                     )
                 }
             }

@@ -160,8 +160,21 @@ interface MeldDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertVotes(votes: List<VoteEntity>)
 
-    @Query("SELECT * FROM votes WHERE roomId = :roomId AND voterUid = :voterUid")
+    @Query("SELECT * FROM votes WHERE roomId = :roomId AND voterUid = :voterUid ORDER BY rank ASC, votedAtEpochMs ASC")
     suspend fun getVotesByVoterOnce(roomId: String, voterUid: String): List<VoteEntity>
+
+    /**
+     * Ranked rooms: add [newVote] at the end of the voter's ranking, or (isRemoval) take the
+     * option out and close the gap so ranks stay 0..n-1.
+     */
+    @Transaction
+    suspend fun applyRankedVote(roomId: String, optionId: String, voterUid: String, isRemoval: Boolean, newVote: VoteEntity) {
+        val current = getVotesByVoterOnce(roomId, voterUid)
+        val kept = current.filter { it.optionId != optionId }
+        val ordered = if (isRemoval) kept else kept + newVote
+        deleteVotesByVoterInRoom(roomId, voterUid)
+        insertVotes(ordered.mapIndexed { idx, v -> v.copy(rank = idx) })
+    }
 
     @Query("SELECT * FROM voice_comments WHERE roomId = :roomId")
     suspend fun getVoiceCommentsOnce(roomId: String): List<VoiceCommentEntity>

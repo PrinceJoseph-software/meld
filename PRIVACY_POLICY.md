@@ -30,6 +30,12 @@ Firebase processes this data on Google's infrastructure. See [Google's Firebase 
 
 If you never create or join a shared room, or you use a build without cloud configuration, nothing leaves your device.
 
+### Integrations you choose to use
+- **Slack or Discord:** if you start a poll with `/meld`, the question, options and link are posted in that channel. When the poll closes, the result is posted there too. Slack and Discord process those messages under their own privacy policies.
+- **Decision webhooks:** a room's owner can add a webhook. When the room closes, Meld sends its question, options, vote counts and voter count (not names) to the owner's URL.
+- **Calendar feeds and embeds:** anyone with a room's code can open its calendar feed, which lists the decided time, or its embed.
+- **Android "Add decided times to my calendar":** off by default. When on, the winning time slot is written to your phone's calendar. Your calendar is never uploaded.
+
 ## 3. Anonymous rooms
 
 In rooms with Anonymous Mode on, other participants see your mask name instead of your display name. Ballots are tied only to the random device id, so the service can stop duplicate ballots.
@@ -40,6 +46,7 @@ Meld only asks for permissions when you use the matching feature:
 
 - **Microphone (`RECORD_AUDIO`):** to record voice opinions. Audio is recorded on your device. It is uploaded only when you post it to a shared room.
 - **Calendar (`READ_CALENDAR`):** to suggest free time slots and detect scheduling conflicts. Calendar events are read on your device and **never uploaded**.
+- **Calendar write (`WRITE_CALENDAR`):** only if you turn on "Add decided times to my calendar". Used solely to add the winning time slot of polls you took part in.
 - **Notifications (`POST_NOTIFICATIONS`):** requested when you set a poll deadline, so Meld can alert you when it's about to close and when a decision is reached.
 
 ## 5. No ads, no analytics, no tracking

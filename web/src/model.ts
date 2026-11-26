@@ -29,6 +29,13 @@ export interface Room {
   isLocked: boolean;
   createdAtEpochMs: number;
   expiresAtEpochMs: number;
+  isRanked?: boolean;
+  repeatWeekly?: boolean;
+  seriesId?: string | null;
+  /** Set by the scheduler when next week's room of a recurring poll opens. */
+  nextRoomCode?: string | null;
+  notifiedAt?: number | null;
+  source?: string;
 }
 
 export interface Option {
@@ -96,6 +103,8 @@ export interface NewRoom {
   allowFriendsToAdd: boolean;
   isAnonymous: boolean;
   deadlineMinutes: number | null;
+  isRanked?: boolean;
+  repeatWeekly?: boolean;
 }
 
 /**
@@ -115,9 +124,13 @@ export async function createRoom(input: NewRoom): Promise<string> {
   batch.set(doc(db, 'rooms', code), {
     question: clean(input.question, 200),
     mode: input.mode,
-    allowMultiple: input.allowMultiple,
+    allowMultiple: input.allowMultiple && !input.isRanked,
     allowFriendsToAdd: input.allowFriendsToAdd,
     isAnonymous: input.isAnonymous,
+    isRanked: Boolean(input.isRanked),
+    repeatWeekly: Boolean(input.repeatWeekly),
+    seriesId: input.repeatWeekly ? code : null,
+    source: 'web',
     deadlineEpochMs: input.deadlineMinutes ? now + input.deadlineMinutes * 60_000 : null,
     ownerUid: uid,
     winnerOptionId: null,
@@ -138,6 +151,12 @@ export async function createRoom(input: NewRoom): Promise<string> {
       createdByUid: uid,
     });
   });
+  if (input.repeatWeekly) {
+    batch.set(doc(db, 'series', code), {
+      ownerUid: uid, latestCode: code, active: true, intervalDays: 7,
+      nextRunAt: now + 7 * 24 * HOUR, createdAtEpochMs: now,
+    });
+  }
   // Not awaited: resolves only on server acknowledgement, which never comes offline.
   batch.commit().catch((e) => console.warn('createRoom', e));
   return code;
@@ -223,7 +242,8 @@ export async function setMyBallot(room: Room, optionIds: string[]) {
         voterName: look.name,
         badgeColorIndex: look.badgeColorIndex,
         avatarStyleIndex: look.avatarStyleIndex,
-        optionIds: room.allowMultiple ? optionIds.slice(0, 20) : optionIds.slice(0, 1),
+        // ranked rooms: optionIds is the voter's ranking, best first
+        optionIds: room.allowMultiple || room.isRanked ? optionIds.slice(0, 20) : optionIds.slice(0, 1),
         updatedAtEpochMs: Date.now(),
       });
   write.catch((e) => console.warn('setMyBallot', e));
@@ -324,3 +344,73 @@ export async function fetchAudio(room: Room, id: string): Promise<string | null>
 }
 
 export const MAX_AUDIO_BASE64 = 700_000;
+
+// ---- Server integrations (web/api) ----------------------------------------------------
+
+/**
+ * Tells the server this room looks closed. The server re-checks and sends the decision
+ * webhook / Slack / Discord message exactly once, so calling it repeatedly is harmless.
+ */
+export function pingDecision(code: string) {
+  if (!navigator.onLine) return;
+  fetch('/api/decision', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ code }),
+    keepalive: true,
+  }).catch(() => { /* backstop: the daily scheduler sends it later */ });
+}
+
+/** Redeems a claim link from Slack/Discord so this device becomes the room's owner. */
+export async function claimRoom(code: string, token: string): Promise<boolean> {
+  await ensureSignedIn();
+  const { auth } = services();
+  const idToken = await auth.currentUser!.getIdToken();
+  const res = await fetch('/api/claim', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ code, token }),
+  });
+  return res.ok;
+}
+
+export interface WebhookConfig { webhookUrl: string | null; webhookSecret: string }
+
+export async function getWebhookConfig(room: Room): Promise<WebhookConfig | null> {
+  const { db } = services();
+  try {
+    const snap = await getDoc(doc(db, 'rooms', room.code, 'private', 'config'));
+    const d = snap.data() as Partial<WebhookConfig> | undefined;
+    return { webhookUrl: d?.webhookUrl ?? null, webhookSecret: d?.webhookSecret ?? '' };
+  } catch {
+    return null;
+  }
+}
+
+export async function saveWebhookConfig(room: Room, webhookUrl: string | null, webhookSecret: string) {
+  const { db } = services();
+  await setDoc(doc(db, 'rooms', room.code, 'private', 'config'), {
+    webhookUrl: webhookUrl || null,
+    webhookSecret,
+    updatedAtEpochMs: Date.now(),
+  });
+}
+
+export function newWebhookSecret() {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  return 'whsec_' + Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export interface Series { ownerUid: string; latestCode: string; active: boolean; nextRunAt: number }
+
+export async function getSeries(id: string): Promise<Series | null> {
+  await ensureSignedIn();
+  const { db } = services();
+  const snap = await getDoc(doc(db, 'series', id));
+  return snap.exists() ? (snap.data() as Series) : null;
+}
+
+export async function setSeriesActive(id: string, active: boolean) {
+  const { db } = services();
+  updateDoc(doc(db, 'series', id), { active }).catch((e) => console.warn('setSeriesActive', e));
+}

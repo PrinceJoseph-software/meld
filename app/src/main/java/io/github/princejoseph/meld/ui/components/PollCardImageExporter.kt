@@ -142,6 +142,10 @@ object PollCardImageExporter {
             append(if (room.isLocked) "FINALIZED" else "LIVE POLL")
             append("  •  ")
             append("${room.totalVotes} ${if (room.totalVotes == 1) "VOTE" else "VOTES"}")
+            if (room.isRanked) {
+                append("  •  RANKED")
+                if (room.isLocked && room.rankedRounds > 1) append(" · ${room.rankedRounds} ROUNDS")
+            }
         }
         val subPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = if (room.isLocked) emerald else inkSecondary

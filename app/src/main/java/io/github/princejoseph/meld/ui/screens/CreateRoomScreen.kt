@@ -157,6 +157,9 @@ fun CreateRoomScreen(
     onAllowMultipleChange: (Boolean) -> Unit,
     onAllowFriendsChange: (Boolean) -> Unit,
     onAnonymousChange: (Boolean) -> Unit,
+    onRankedChange: (Boolean) -> Unit = {},
+    onRepeatWeeklyChange: (Boolean) -> Unit = {},
+    cloudEnabled: Boolean = false,
     onDeadlineMinutesChange: (Int?) -> Unit,
     onSyncDeviceCalendar: () -> Unit,
     onImportIcsUri: (Uri, String) -> Unit,
@@ -642,11 +645,19 @@ fun CreateRoomScreen(
 
                 // Compact Settings Strip with Tactile Switches + Decision Timer
                 SettingToggleRow(
-                    label = stringResource(R.string.setting_multiple_picks),
-                    checked = state.allowMultiple,
-                    onCheckedChange = onAllowMultipleChange,
-                    testTag = "setting_multiple_switch"
+                    label = stringResource(R.string.setting_ranked_choice),
+                    checked = state.isRanked,
+                    onCheckedChange = onRankedChange,
+                    testTag = "setting_ranked_switch"
                 )
+                if (!state.isRanked) {
+                    SettingToggleRow(
+                        label = stringResource(R.string.setting_multiple_picks),
+                        checked = state.allowMultiple,
+                        onCheckedChange = onAllowMultipleChange,
+                        testTag = "setting_multiple_switch"
+                    )
+                }
                 SettingToggleRow(
                     label = stringResource(R.string.setting_friends_add),
                     checked = state.allowFriendsToAdd,
@@ -659,6 +670,14 @@ fun CreateRoomScreen(
                     onCheckedChange = onAnonymousChange,
                     testTag = "setting_anonymous_switch"
                 )
+                if (cloudEnabled) {
+                    SettingToggleRow(
+                        label = stringResource(R.string.setting_repeat_weekly),
+                        checked = state.repeatWeekly,
+                        onCheckedChange = onRepeatWeeklyChange,
+                        testTag = "setting_weekly_switch"
+                    )
+                }
 
                 // Optional Poll Deadline Strip
                 Column(

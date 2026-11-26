@@ -131,7 +131,9 @@ data class OptionUiModel(
     val isDeclinedByMe: Boolean = false,
     val declinedCount: Int = 0,
     val slotStartMs: Long? = null,
-    val slotEndMs: Long? = null
+    val slotEndMs: Long? = null,
+    /** Ranked rooms: this device's position for the option (1 = first choice), else null. */
+    val myRank: Int? = null
 ) {
     /**
      * The option's time window. Uses the stored timestamps when present (locale-independent);
@@ -168,6 +170,12 @@ data class RoomDetailsUiModel(
     val maskedNetworkIp: String? = null,
     val isIpVoteLocked: Boolean = false,
     val anonymousLockAlert: String? = null,
+    val isRanked: Boolean = false,
+    val rankedRounds: Int = 0,
+    val rankedTie: Boolean = false,
+    val repeatWeekly: Boolean = false,
+    val seriesId: String? = null,
+    val nextRoomCode: String? = null,
     val voiceComments: List<VoiceCommentUiModel> = emptyList()
 ) {
     val shareUrl: String

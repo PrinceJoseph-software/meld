@@ -306,3 +306,55 @@ object FreeSlotCalculator {
         return merged
     }
 }
+
+/**
+ * Writes decided time slots into the user's own calendar (opt-in setting, WRITE_CALENDAR).
+ * Picks the primary writable, visible calendar; each room is added at most once.
+ */
+object CalendarWriter {
+    fun hasWritePermission(context: Context): Boolean =
+        androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.WRITE_CALENDAR
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    private fun primaryCalendarId(context: Context): Long? {
+        val projection = arrayOf(
+            android.provider.CalendarContract.Calendars._ID,
+            android.provider.CalendarContract.Calendars.IS_PRIMARY
+        )
+        val selection = "${android.provider.CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= ? AND " +
+            "${android.provider.CalendarContract.Calendars.VISIBLE} = 1"
+        val args = arrayOf(android.provider.CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR.toString())
+        return runCatching {
+            context.contentResolver.query(
+                android.provider.CalendarContract.Calendars.CONTENT_URI, projection, selection, args, null
+            )?.use { c ->
+                var fallback: Long? = null
+                while (c.moveToNext()) {
+                    val id = c.getLong(0)
+                    if (c.getInt(1) == 1) return@use id
+                    if (fallback == null) fallback = id
+                }
+                fallback
+            }
+        }.getOrNull()
+    }
+
+    /** Returns true when an event was inserted. */
+    fun insertEvent(context: Context, title: String, startMs: Long, endMs: Long, description: String): Boolean {
+        if (!hasWritePermission(context)) return false
+        val calendarId = primaryCalendarId(context) ?: return false
+        val values = android.content.ContentValues().apply {
+            put(android.provider.CalendarContract.Events.CALENDAR_ID, calendarId)
+            put(android.provider.CalendarContract.Events.TITLE, title)
+            put(android.provider.CalendarContract.Events.DESCRIPTION, description)
+            put(android.provider.CalendarContract.Events.DTSTART, startMs)
+            put(android.provider.CalendarContract.Events.DTEND, endMs)
+            put(android.provider.CalendarContract.Events.EVENT_TIMEZONE, java.util.TimeZone.getDefault().id)
+        }
+        return runCatching {
+            context.contentResolver.insert(android.provider.CalendarContract.Events.CONTENT_URI, values) != null
+        }.getOrDefault(false)
+    }
+}

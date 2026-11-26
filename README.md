@@ -31,6 +31,8 @@ Built natively on Android with **Jetpack Compose**, **Kotlin Coroutines & Flow**
 ## Key Features
 
 - **Zero-Login Decision Rooms, Everywhere**: Create rooms on Android or the web, share `https://<your-site>/r/<code>` (opens the app if installed via App Links, otherwise the PWA), or join with the 6-character code.
+- **Ranked Choice & Weekly Polls**: Instant-runoff ranked voting (identical results on Android, web and server) and polls that reopen every week behind one permanent link.
+- **Slack, Discord, Webhooks & Embeds**: `/meld Lunch? | Tacos | Ramen` in Slack or Discord; signed decision webhooks to your own system; live votable `<iframe>` embeds; subscribable calendar feeds for decided time slots; shareable 1080×1350 result cards. See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
 - **Offline-First Cloud Sync**: Firestore with Anonymous Auth. Votes, rooms and opinions are written locally first, queued while offline, and synced on reconnect. Server-side security rules enforce one ballot per device, creator-only controls and deadlines.
 - **Time Coordination & Calendar Sync**:
   - Read device calendars (with runtime permission) or import `.ics` files locally without sharing credentials.
@@ -81,7 +83,7 @@ app/src/main/java/io/github/princejoseph/meld/
 See **[docs/SETUP.md](docs/SETUP.md)** for the 20-minute setup (Firebase project, Vercel deployment of `web/`, Android config), **[docs/RELEASING.md](docs/RELEASING.md)** for signed releases, and **[docs/DATA_MODEL.md](docs/DATA_MODEL.md)** for the shared data model. Without Firebase configured, the Android app runs local-only.
 
 ```text
-web/          React + Vite PWA (deploy to Vercel, root directory = web)
+web/          React + Vite PWA + server functions in web/api (deploy to Vercel, root = web)
 rules-tests/  Firestore security-rule tests (npm test, uses the emulator)
 firestore.rules, firebase.json
 ```

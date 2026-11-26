@@ -27,7 +27,7 @@ export default defineConfig({
         // App shell + fonts are precached; every route falls back to index.html offline.
         globPatterns: ['**/*.{js,css,html,png,ttf,svg,webmanifest}'],
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/\.well-known\//],
+        navigateFallbackDenylist: [/^\/\.well-known\//, /^\/api\//, /^\/cal\//],
       },
     }),
   ],

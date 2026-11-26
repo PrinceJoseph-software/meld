@@ -167,3 +167,37 @@ describe('comments and audio', () => {
     await assertSucceeds(setDoc(doc(db('bob'), `rooms/${CODE}/audio/c1`), { authorAuthUid: 'bob', mimeType: 'audio/mp4', dataBase64: 'AAAA' }));
   });
 });
+
+describe('ranked, recurring and integrations', () => {
+  it('ranked rooms accept an ordered ballot of several options', async () => {
+    await seed({ isRanked: true });
+    await assertSucceeds(setDoc(doc(db('bob'), `rooms/${CODE}/ballots/bob`), ballot(['o2', 'o1'])));
+  });
+
+  it('clients cannot set or change server-managed fields', async () => {
+    await assertFails(setDoc(doc(db('alice'), `rooms/${CODE}`), room('alice', { notifiedAt: 1 })));
+    await assertFails(setDoc(doc(db('alice'), `rooms/${CODE}`), room('alice', { source: 'slack' })));
+    await seed();
+    await assertFails(updateDoc(doc(db('owner'), `rooms/${CODE}`), { nextRoomCode: 'ZZZ999' }));
+    await assertFails(updateDoc(doc(db('owner'), `rooms/${CODE}`), { isRanked: true }));
+  });
+
+  it('webhook config is private to the owner and must be https', async () => {
+    await seed();
+    const cfg = doc(db('owner'), `rooms/${CODE}/private/config`);
+    await assertSucceeds(setDoc(cfg, { webhookUrl: 'https://example.com/hook', webhookSecret: 's3cret', updatedAtEpochMs: 1 }));
+    await assertFails(setDoc(cfg, { webhookUrl: 'http://example.com/hook', webhookSecret: 's', updatedAtEpochMs: 1 }));
+    await assertFails(getDoc(doc(db('bob'), `rooms/${CODE}/private/config`)));
+    await assertFails(getDoc(doc(db('owner'), `rooms/${CODE}/private/claim`)));
+  });
+
+  it('series: owner creates and can only pause; others cannot touch it', async () => {
+    const s = { ownerUid: 'alice', latestCode: CODE, active: true, intervalDays: 7, nextRunAt: 5, createdAtEpochMs: 1 };
+    await assertFails(setDoc(doc(db('bob'), `series/${CODE}`), s));
+    await assertSucceeds(setDoc(doc(db('alice'), `series/${CODE}`), s));
+    await assertSucceeds(updateDoc(doc(db('alice'), `series/${CODE}`), { active: false }));
+    await assertFails(updateDoc(doc(db('alice'), `series/${CODE}`), { latestCode: 'HIJACK' }));
+    await assertFails(updateDoc(doc(db('bob'), `series/${CODE}`), { active: true }));
+    await assertSucceeds(getDoc(doc(db('bob'), `series/${CODE}`)));
+  });
+});
