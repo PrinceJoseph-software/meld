@@ -1035,7 +1035,8 @@ class MeldRepository(
                 transcript = comment.transcript,
                 durationSeconds = comment.durationSeconds,
                 createdAtEpochMs = comment.createdAtEpochMs,
-                isMyComment = isMine
+                isMyComment = isMine,
+                audioFilePath = comment.audioFilePath
             )
         }
 
@@ -1072,10 +1073,11 @@ class MeldRepository(
         roomId: String,
         optionId: String?,
         transcript: String,
-        durationSeconds: Int
+        durationSeconds: Int,
+        audioFilePath: String? = null
     ) {
         val cleanTranscript = sanitizeMeldInput(transcript, maxLength = 300)
-        if (cleanTranscript.isEmpty()) return
+        if (cleanTranscript.isEmpty() && audioFilePath.isNullOrBlank()) return
         val identity = identityStore.ensureIdentity()
         val room = dao.getRoomOnce(roomId) ?: return
         val timerExpired = room.deadlineEpochMs != null && System.currentTimeMillis() >= room.deadlineEpochMs
@@ -1089,6 +1091,7 @@ class MeldRepository(
         val name = if (room.isAnonymous) identity.effectiveAnonymousName else identity.effectiveName
         val color = if (room.isAnonymous) identity.anonymousBadgeColorIndex else identity.badgeColorIndex
         val style = if (room.isAnonymous) identity.anonymousAvatarStyleIndex else identity.avatarStyleIndex
+        val safeDur = durationSeconds.coerceIn(1, 60)
 
         val comment = VoiceCommentEntity(
             id = UUID.randomUUID().toString(),
@@ -1098,9 +1101,10 @@ class MeldRepository(
             voterName = name,
             voterBadgeColorIndex = color,
             voterAvatarStyleIndex = style,
-            transcript = cleanTranscript,
-            durationSeconds = durationSeconds.coerceIn(1, 60),
-            createdAtEpochMs = System.currentTimeMillis()
+            transcript = cleanTranscript.ifEmpty { "Voice note (${safeDur}s)" },
+            durationSeconds = safeDur,
+            createdAtEpochMs = System.currentTimeMillis(),
+            audioFilePath = audioFilePath
         )
         dao.insertVoiceComment(comment)
         remoteSync.pushVoiceComment(comment)
@@ -1110,6 +1114,9 @@ class MeldRepository(
         val existing = dao.getVoiceCommentByIdOnce(commentId) ?: return
         val identity = identityStore.ensureIdentity()
         if (existing.voterUid != identity.uid) return
+        existing.audioFilePath?.let { path ->
+            runCatching { java.io.File(path).delete() }
+        }
         dao.deleteVoiceComment(commentId)
         remoteSync.deleteVoiceComment(existing.roomId, commentId)
     }

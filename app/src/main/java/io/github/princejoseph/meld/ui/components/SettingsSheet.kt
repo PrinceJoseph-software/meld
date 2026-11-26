@@ -19,9 +19,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Casino
 import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.rounded.Bolt
@@ -109,6 +111,8 @@ fun SettingsSheet(
     onToggleHaptics: (Boolean) -> Unit,
     onOpenHistory: () -> Unit,
     onOpenLanguageSelector: () -> Unit,
+    onOpenFeatureTour: () -> Unit = {},
+    onOpenPrivacyPolicy: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val colors = MeldTheme.colors
@@ -1021,6 +1025,120 @@ fun SettingsSheet(
                                 if (it) view.performTactileConfirm()
                                 onToggleHaptics(it)
                             }
+                        )
+                    }
+
+                    HorizontalDivider(color = colors.hairline)
+
+                    // App Feature Tour / Onboarding Replay
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable {
+                                onDismiss()
+                                onOpenFeatureTour()
+                            }
+                            .padding(vertical = 6.dp)
+                            .testTag("settings_tour_row"),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(colors.vermilion.copy(alpha = 0.12f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Explore,
+                                    contentDescription = null,
+                                    tint = colors.vermilion,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "App Feature Tour",
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp,
+                                    color = colors.inkPrimary
+                                )
+                                Text(
+                                    text = "Replay the quick walkthrough",
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontSize = 12.sp,
+                                    color = colors.inkSecondary
+                                )
+                            }
+                        }
+                        Text(
+                            text = "Open",
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = colors.vermilion
+                        )
+                    }
+
+                    HorizontalDivider(color = colors.hairline)
+
+                    // Privacy Policy
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable {
+                                onDismiss()
+                                onOpenPrivacyPolicy()
+                            }
+                            .padding(vertical = 6.dp)
+                            .testTag("settings_privacy_row"),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(colors.surfaceElevated),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.PrivacyTip,
+                                    contentDescription = null,
+                                    tint = colors.inkPrimary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Privacy Policy",
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp,
+                                    color = colors.inkPrimary
+                                )
+                                Text(
+                                    text = "Local-first storage & permissions",
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontSize = 12.sp,
+                                    color = colors.inkSecondary
+                                )
+                            }
+                        }
+                        Text(
+                            text = "Read",
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = colors.vermilion
                         )
                     }
                 }

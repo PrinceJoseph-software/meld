@@ -73,10 +73,12 @@ import io.github.princejoseph.meld.ui.components.AvatarStudioSheet
 import io.github.princejoseph.meld.ui.components.HistorySheet
 import io.github.princejoseph.meld.ui.components.LanguageSelectorSheet
 import io.github.princejoseph.meld.ui.components.MeldLogo
+import io.github.princejoseph.meld.ui.components.PrivacyPolicySheet
 import io.github.princejoseph.meld.ui.components.SettingsSheet
 import io.github.princejoseph.meld.ui.components.performTactileTick
 import io.github.princejoseph.meld.ui.screens.CreateRoomScreen
 import io.github.princejoseph.meld.ui.screens.DecisionRoomScreen
+import io.github.princejoseph.meld.ui.screens.OnboardingScreen
 import io.github.princejoseph.meld.ui.theme.MeldAppTheme
 import io.github.princejoseph.meld.ui.theme.MeldTheme
 import io.github.princejoseph.meld.ui.theme.ObsidianCanvas
@@ -156,6 +158,7 @@ private fun MeldAppShell(
     val isSimulatingFriends by viewModel.isSimulatingFriends.collectAsStateWithLifecycle()
     val selectedLang by viewModel.selectedLanguage.collectAsStateWithLifecycle()
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsStateWithLifecycle()
+    val hasCompletedOnboarding by viewModel.hasCompletedOnboarding.collectAsStateWithLifecycle()
 
     LaunchedEffect(selectedLang) {
         val lang = selectedLang ?: return@LaunchedEffect
@@ -173,6 +176,8 @@ private fun MeldAppShell(
     var showTopAvatarStudio by remember { mutableStateOf(false) }
     var showLanguageSheet by remember { mutableStateOf(false) }
     var showSettingsSheet by remember { mutableStateOf(false) }
+    var showPrivacySheet by remember { mutableStateOf(false) }
+    var showOnboardingTour by remember { mutableStateOf(false) }
     var launchRevealFinished by rememberSaveable { mutableStateOf(false) }
 
     Box(
@@ -316,6 +321,15 @@ private fun MeldAppShell(
                 onFinished = { launchRevealFinished = true }
             )
         }
+
+        if (hasCompletedOnboarding == false || showOnboardingTour) {
+            OnboardingScreen(
+                onFinish = {
+                    showOnboardingTour = false
+                    viewModel.completeOnboarding()
+                }
+            )
+        }
     }
 
     if (showHistorySheet) {
@@ -355,7 +369,15 @@ private fun MeldAppShell(
             onToggleHaptics = viewModel::setHapticsEnabled,
             onOpenHistory = { showHistorySheet = true },
             onOpenLanguageSelector = { showLanguageSheet = true },
+            onOpenFeatureTour = { showOnboardingTour = true },
+            onOpenPrivacyPolicy = { showPrivacySheet = true },
             onDismiss = { showSettingsSheet = false }
+        )
+    }
+
+    if (showPrivacySheet) {
+        PrivacyPolicySheet(
+            onDismiss = { showPrivacySheet = false }
         )
     }
 }

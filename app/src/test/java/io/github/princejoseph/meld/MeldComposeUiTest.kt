@@ -11,8 +11,10 @@ import androidx.compose.ui.test.performTextInput
 import io.github.princejoseph.meld.data.OptionUiModel
 import io.github.princejoseph.meld.data.VoiceCommentUiModel
 import io.github.princejoseph.meld.data.VoterIdentity
+import io.github.princejoseph.meld.ui.components.PrivacyPolicySheet
 import io.github.princejoseph.meld.ui.components.SettingsSheet
 import io.github.princejoseph.meld.ui.components.VoiceCommentsSection
+import io.github.princejoseph.meld.ui.screens.OnboardingScreen
 import io.github.princejoseph.meld.ui.theme.MeldAppTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -56,7 +58,7 @@ class MeldComposeUiTest {
                     comments = emptyList(),
                     options = sampleOptions,
                     isRoomLocked = false,
-                    onAddComment = { optId, transcript, _ ->
+                    onAddComment = { optId, transcript, _, _ ->
                         addedOptionId = optId
                         addedTranscript = transcript
                     },
@@ -100,7 +102,7 @@ class MeldComposeUiTest {
                     comments = comments,
                     options = emptyList(),
                     isRoomLocked = true,
-                    onAddComment = { _, _, _ -> },
+                    onAddComment = { _, _, _, _ -> },
                     onDeleteComment = { deletedId = it }
                 )
             }
@@ -175,6 +177,8 @@ class MeldComposeUiTest {
         composeRule.onNodeWithTag("settings_history_row").assertExists()
         composeRule.onNodeWithTag("settings_theme_row").assertExists()
         composeRule.onNodeWithTag("settings_language_row").assertExists()
+        composeRule.onNodeWithTag("settings_tour_row").assertExists()
+        composeRule.onNodeWithTag("settings_privacy_row").assertExists()
 
         composeRule.onNodeWithTag("anon_shuffle_button").performClick()
         composeRule.onNodeWithTag("settings_done_button").performClick()
@@ -184,5 +188,34 @@ class MeldComposeUiTest {
         assertTrue(savedAnonAvatar >= 0)
         assertTrue(savedAnonColor >= 0)
         assertTrue(savedMask.isNotBlank())
+    }
+
+    @Test
+    fun `onboarding screen displays tour slides and skip finishes`() {
+        var finished = false
+        composeRule.setContent {
+            MeldAppTheme {
+                OnboardingScreen(onFinish = { finished = true })
+            }
+        }
+        composeRule.onNodeWithTag("onboarding_screen").assertIsDisplayed()
+        composeRule.onNodeWithText("Decide Together in Seconds").assertIsDisplayed()
+        composeRule.onNodeWithTag("onboarding_next_button").assertIsDisplayed().performClick()
+        composeRule.onNodeWithTag("onboarding_skip_button").performClick()
+        assertTrue(finished)
+    }
+
+    @Test
+    fun `privacy policy sheet displays key local-first guarantees and dismisses`() {
+        var dismissed = false
+        composeRule.setContent {
+            MeldAppTheme {
+                PrivacyPolicySheet(onDismiss = { dismissed = true })
+            }
+        }
+        composeRule.onNodeWithTag("privacy_policy_sheet").assertIsDisplayed()
+        composeRule.onNodeWithText("Local-First Storage & Zero Accounts").assertExists()
+        composeRule.onNodeWithTag("privacy_done_button").performClick()
+        assertTrue(dismissed)
     }
 }

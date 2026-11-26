@@ -1,9 +1,10 @@
 ﻿package io.github.princejoseph.meld.ui.components
 
-import android.app.Activity
-import android.content.Context
-import android.content.Intent
-import android.speech.RecognizerIntent
+import android.Manifest
+import android.content.pm.PackageManager
+import android.media.MediaPlayer
+import android.media.MediaRecorder
+import android.os.Build
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -15,7 +16,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import io.github.princejoseph.meld.R
 import io.github.princejoseph.meld.data.OptionUiModel
 import io.github.princejoseph.meld.data.VoiceCommentUiModel
@@ -51,7 +52,10 @@ import io.github.princejoseph.meld.ui.theme.InstrumentSerifFamily
 import io.github.princejoseph.meld.ui.theme.JetBrainsMonoFamily
 import io.github.princejoseph.meld.ui.theme.MeldTheme
 import io.github.princejoseph.meld.ui.theme.PlusJakartaSansFamily
+import kotlinx.coroutines.delay
+import java.io.File
 import java.util.Locale
+import java.util.UUID
 import kotlin.math.sin
 
 @Composable
@@ -59,7 +63,7 @@ fun VoiceCommentsSection(
     comments: List<VoiceCommentUiModel>,
     options: List<OptionUiModel>,
     isRoomLocked: Boolean,
-    onAddComment: (optionId: String?, transcript: String, durationSeconds: Int) -> Unit,
+    onAddComment: (optionId: String?, transcript: String, durationSeconds: Int, audioFilePath: String?) -> Unit,
     onDeleteComment: (commentId: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -69,8 +73,11 @@ fun VoiceCommentsSection(
 
     var selectedOptionId by remember { mutableStateOf<String?>(null) }
     var activePlayingId by remember { mutableStateOf<String?>(null) }
-    var recordStartTime by remember { mutableLongStateOf(0L) }
     var isRecording by remember { mutableStateOf(false) }
+    var recordingSeconds by remember { mutableIntStateOf(0) }
+    var currentRecordingPath by remember { mutableStateOf<String?>(null) }
+    var recorder by remember { mutableStateOf<MediaRecorder?>(null) }
+    var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
     var showFallbackDialog by remember { mutableStateOf(false) }
     var fallbackText by remember { mutableStateOf("") }
 
@@ -96,23 +103,98 @@ fun VoiceCommentsSection(
         })
         tts = speech
         onDispose {
+            runCatching { recorder?.stop() }
+            runCatching { recorder?.release() }
+            runCatching { mediaPlayer?.stop() }
+            runCatching { mediaPlayer?.release() }
             speech.stop()
             speech.shutdown()
         }
     }
 
-    val speechLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
+    fun stopAllPlayback() {
+        runCatching { mediaPlayer?.stop() }
+        runCatching { mediaPlayer?.release() }
+        mediaPlayer = null
+        tts?.stop()
+        activePlayingId = null
+    }
+
+    fun startInlineRecording() {
+        stopAllPlayback()
+        val dir = File(context.filesDir, "voice_notes").apply { mkdirs() }
+        val outFile = File(dir, "vc_${UUID.randomUUID()}.m4a")
+        val newRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            MediaRecorder(context)
+        } else {
+            @Suppress("DEPRECATION")
+            MediaRecorder()
+        }
+        val started = runCatching {
+            newRecorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+            newRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            newRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            newRecorder.setAudioEncodingBitRate(64_000)
+            newRecorder.setAudioSamplingRate(16_000)
+            newRecorder.setOutputFile(outFile.absolutePath)
+            newRecorder.prepare()
+            newRecorder.start()
+        }.isSuccess
+
+        if (started) {
+            recorder = newRecorder
+            currentRecordingPath = outFile.absolutePath
+            recordingSeconds = 0
+            isRecording = true
+        } else {
+            runCatching { newRecorder.release() }
+            runCatching { outFile.delete() }
+            isRecording = false
+            showFallbackDialog = true
+        }
+    }
+
+    fun stopAndSaveInlineRecording() {
+        val activeRecorder = recorder
+        val path = currentRecordingPath
+        val dur = recordingSeconds.coerceIn(1, 60)
+        recorder = null
+        currentRecordingPath = null
         isRecording = false
-        if (result.resultCode == Activity.RESULT_OK) {
-            val spokenList = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
-            val spoken = spokenList?.firstOrNull()?.trim()
-            if (!spoken.isNullOrEmpty()) {
-                val elapsedSec = (((System.currentTimeMillis() - recordStartTime) / 1000L).toInt()).coerceIn(2, 30)
-                view.performTactileConfirm()
-                onAddComment(selectedOptionId, spoken, elapsedSec)
+
+        val stoppedCleanly = runCatching {
+            activeRecorder?.stop()
+        }.isSuccess
+        runCatching { activeRecorder?.release() }
+
+        if (stoppedCleanly && path != null && File(path).exists() && File(path).length() > 0L) {
+            view.performTactileConfirm()
+            onAddComment(selectedOptionId, "Voice note (0:${dur.toString().padStart(2, '0')})", dur, path)
+        } else {
+            if (path != null) runCatching { File(path).delete() }
+            showFallbackDialog = true
+        }
+    }
+
+    LaunchedEffect(isRecording) {
+        if (isRecording) {
+            while (isRecording && recordingSeconds < 60) {
+                delay(1000L)
+                recordingSeconds += 1
             }
+            if (isRecording && recordingSeconds >= 60) {
+                stopAndSaveInlineRecording()
+            }
+        }
+    }
+
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            startInlineRecording()
+        } else {
+            showFallbackDialog = true
         }
     }
 
@@ -189,28 +271,33 @@ fun VoiceCommentsSection(
                         IconButton(
                             onClick = {
                                 view.performTactileTick()
-                                isRecording = true
-                                recordStartTime = System.currentTimeMillis()
-                                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                                    putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak your opinion or vote rationale...")
-                                }
-                                try {
-                                    speechLauncher.launch(intent)
-                                } catch (e: Exception) {
-                                    isRecording = false
-                                    showFallbackDialog = true
+                                if (isRecording) {
+                                    stopAndSaveInlineRecording()
+                                } else {
+                                    val hasPermission = ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.RECORD_AUDIO
+                                    ) == PackageManager.PERMISSION_GRANTED
+                                    if (hasPermission) {
+                                        startInlineRecording()
+                                    } else {
+                                        micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                    }
                                 }
                             },
                             modifier = Modifier
                                 .size(38.dp)
                                 .clip(CircleShape)
-                                .background(colors.vermilion)
+                                .background(if (isRecording) colors.inkPrimary else colors.vermilion)
                                 .testTag("record_voice_comment_button")
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.Mic,
-                                contentDescription = stringResource(R.string.voice_comments_record),
+                                imageVector = if (isRecording) Icons.Outlined.Stop else Icons.Outlined.Mic,
+                                contentDescription = if (isRecording) {
+                                    stringResource(R.string.voice_comments_stop)
+                                } else {
+                                    stringResource(R.string.voice_comments_record)
+                                },
                                 tint = Color.White,
                                 modifier = Modifier.size(19.dp)
                             )
@@ -270,7 +357,7 @@ fun VoiceCommentsSection(
                 }
             }
 
-            // Recording Indicator
+            // Live Inline Recording Indicator
             AnimatedVisibility(
                 visible = isRecording,
                 enter = fadeIn(),
@@ -294,21 +381,38 @@ fun VoiceCommentsSection(
                         .border(1.dp, colors.vermilion.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
                         .padding(horizontal = 14.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .clip(CircleShape)
-                            .background(colors.vermilion.copy(alpha = pulseAlpha))
-                    )
-                    Text(
-                        text = stringResource(R.string.voice_comments_recording),
-                        fontFamily = JetBrainsMonoFamily,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 11.sp,
-                        color = colors.vermilion
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(colors.vermilion.copy(alpha = pulseAlpha))
+                        )
+                        Text(
+                            text = "Recording offline • 0:${recordingSeconds.toString().padStart(2, '0')}",
+                            fontFamily = JetBrainsMonoFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 11.sp,
+                            color = colors.vermilion
+                        )
+                    }
+                    TextButton(
+                        onClick = { stopAndSaveInlineRecording() },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                    ) {
+                        Text(
+                            text = "Save",
+                            fontFamily = PlusJakartaSansFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = colors.vermilion
+                        )
+                    }
                 }
             }
 
@@ -343,15 +447,41 @@ fun VoiceCommentsSection(
                             isPlaying = isPlaying,
                             onPlayToggle = {
                                 if (isPlaying) {
-                                    tts?.stop()
-                                    activePlayingId = null
+                                    stopAllPlayback()
                                 } else {
                                     view.performTactileTick()
-                                    activePlayingId = comment.id
-                                    tts?.speak(comment.transcript, TextToSpeech.QUEUE_FLUSH, null, comment.id)
+                                    stopAllPlayback()
+                                    val audioPath = comment.audioFilePath
+                                    if (!audioPath.isNullOrBlank() && File(audioPath).exists()) {
+                                        val player = MediaPlayer()
+                                        val played = runCatching {
+                                            player.setDataSource(audioPath)
+                                            player.prepare()
+                                            player.setOnCompletionListener {
+                                                if (activePlayingId == comment.id) {
+                                                    activePlayingId = null
+                                                }
+                                                runCatching { player.release() }
+                                                if (mediaPlayer === player) mediaPlayer = null
+                                            }
+                                            player.start()
+                                        }.isSuccess
+                                        if (played) {
+                                            mediaPlayer = player
+                                            activePlayingId = comment.id
+                                        } else {
+                                            runCatching { player.release() }
+                                            activePlayingId = comment.id
+                                            tts?.speak(comment.transcript, TextToSpeech.QUEUE_FLUSH, null, comment.id)
+                                        }
+                                    } else {
+                                        activePlayingId = comment.id
+                                        tts?.speak(comment.transcript, TextToSpeech.QUEUE_FLUSH, null, comment.id)
+                                    }
                                 }
                             },
                             onDelete = {
+                                if (isPlaying) stopAllPlayback()
                                 view.performTactileConfirm()
                                 onDeleteComment(comment.id)
                             }
@@ -399,7 +529,7 @@ fun VoiceCommentsSection(
                         if (cleaned.isNotEmpty()) {
                             val estimatedSec = (cleaned.split(Regex("\\s+")).size / 2).coerceIn(2, 30)
                             view.performTactileConfirm()
-                            onAddComment(selectedOptionId, cleaned, estimatedSec)
+                            onAddComment(selectedOptionId, cleaned, estimatedSec, null)
                             fallbackText = ""
                         }
                         showFallbackDialog = false
@@ -518,9 +648,9 @@ private fun VoiceCommentCard(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Transcript text
+            // Transcript / Audio Label
             Text(
-                text = "\"${comment.transcript}\"",
+                text = if (comment.audioFilePath != null) comment.transcript else "\"${comment.transcript}\"",
                 fontFamily = PlusJakartaSansFamily,
                 fontSize = 13.sp,
                 lineHeight = 18.sp,

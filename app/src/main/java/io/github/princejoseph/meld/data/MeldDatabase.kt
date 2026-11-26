@@ -14,7 +14,7 @@ import androidx.room.RoomDatabase
         AnonymousLockEntity::class,
         VoiceCommentEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class MeldDatabase : RoomDatabase() {

@@ -148,6 +148,7 @@ data class VoiceCommentEntity(
     val voterAvatarStyleIndex: Int,
     val transcript: String,
     val durationSeconds: Int,
-    val createdAtEpochMs: Long
+    val createdAtEpochMs: Long,
+    val audioFilePath: String? = null
 )
 

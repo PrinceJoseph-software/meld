@@ -99,7 +99,8 @@ data class VoiceCommentUiModel(
     val transcript: String,
     val durationSeconds: Int = 3,
     val createdAtEpochMs: Long = System.currentTimeMillis(),
-    val isMyComment: Boolean = false
+    val isMyComment: Boolean = false,
+    val audioFilePath: String? = null
 )
 
 data class VoterChip(

@@ -153,4 +153,4 @@ Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for lo
 
 ## License
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for full details.
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for full details. For details on local-first data handling and permissions, see [PRIVACY_POLICY.md](PRIVACY_POLICY.md).

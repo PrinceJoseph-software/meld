@@ -152,7 +152,7 @@ fun DecisionRoomScreen(
     onToggleSimulatedOffline: () -> Unit,
     onSimulateFriends: () -> Unit,
     onBuildResultSummary: (RoomDetailsUiModel) -> String,
-    onAddVoiceComment: (optionId: String?, transcript: String, durationSeconds: Int) -> Unit = { _, _, _ -> },
+    onAddVoiceComment: (optionId: String?, transcript: String, durationSeconds: Int, audioFilePath: String?) -> Unit = { _, _, _, _ -> },
     onDeleteVoiceComment: (commentId: String) -> Unit = {},
     onOpenSettings: () -> Unit = {},
     modifier: Modifier = Modifier

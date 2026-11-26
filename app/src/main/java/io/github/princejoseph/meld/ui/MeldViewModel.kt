@@ -143,6 +143,19 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = true
         )
 
+    val hasCompletedOnboarding: StateFlow<Boolean?> = identityStore.hasCompletedOnboardingFlow
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+
+    fun completeOnboarding() {
+        viewModelScope.launch {
+            identityStore.setOnboardingCompleted(true)
+        }
+    }
+
     fun setLanguage(lang: String) {
         viewModelScope.launch {
             identityStore.setLanguage(lang)
@@ -162,10 +175,15 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun addVoiceComment(optionId: String?, transcript: String, durationSeconds: Int) {
+    fun addVoiceComment(
+        optionId: String?,
+        transcript: String,
+        durationSeconds: Int,
+        audioFilePath: String? = null
+    ) {
         val roomId = _activeRoomId.value ?: return
         viewModelScope.launch {
-            repository.addVoiceComment(roomId, optionId, transcript, durationSeconds)
+            repository.addVoiceComment(roomId, optionId, transcript, durationSeconds, audioFilePath)
             _logoPulseCount.update { it + 1 }
         }
     }

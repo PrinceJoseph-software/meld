@@ -32,6 +32,11 @@ class IdentityStore(private val context: Context) {
         val ANONYMOUS_BADGE_COLOR_INDEX = intPreferencesKey("anonymous_badge_color_index")
         val ANONYMOUS_MASK_NAME = stringPreferencesKey("anonymous_mask_name")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
+        val HAS_COMPLETED_ONBOARDING = booleanPreferencesKey("has_completed_onboarding")
+    }
+
+    val hasCompletedOnboardingFlow: Flow<Boolean> = context.meldDataStore.data.map { prefs ->
+        prefs[Keys.HAS_COMPLETED_ONBOARDING] ?: false
     }
 
     val selectedLanguageFlow: Flow<String> = context.meldDataStore.data.map { prefs ->
@@ -160,6 +165,12 @@ class IdentityStore(private val context: Context) {
     suspend fun setHapticsEnabled(enabled: Boolean) {
         context.meldDataStore.edit { prefs ->
             prefs[Keys.HAPTICS_ENABLED] = enabled
+        }
+    }
+
+    suspend fun setOnboardingCompleted(completed: Boolean) {
+        context.meldDataStore.edit { prefs ->
+            prefs[Keys.HAS_COMPLETED_ONBOARDING] = completed
         }
     }
 
