@@ -67,6 +67,7 @@ fun VoiceCommentsSection(
     var selectedOptionId by remember { mutableStateOf<String?>(null) }
     var activePlayingId by remember { mutableStateOf<String?>(null) }
     var recordStartTime by remember { mutableLongStateOf(0L) }
+    var isRecording by remember { mutableStateOf(false) }
 
     var tts by remember { mutableStateOf<TextToSpeech?>(null) }
     DisposableEffect(context) {
@@ -98,6 +99,7 @@ fun VoiceCommentsSection(
     val speechLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
+        isRecording = false
         if (result.resultCode == Activity.RESULT_OK) {
             val spokenList = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
             val spoken = spokenList?.firstOrNull()?.trim()
@@ -154,30 +156,35 @@ fun VoiceCommentsSection(
                     )
                 }
 
-                IconButton(
-                    onClick = {
-                        view.performTactileTick()
-                        recordStartTime = System.currentTimeMillis()
-                        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak your opinion or vote rationale...")
-                        }
-                        try {
-                            speechLauncher.launch(intent)
-                        } catch (e: Exception) {}
-                    },
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(colors.vermilion)
-                        .testTag("record_voice_comment_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Mic,
-                        contentDescription = stringResource(R.string.voice_comments_record),
-                        tint = Color.White,
-                        modifier = Modifier.size(19.dp)
-                    )
+                if (!isRoomLocked) {
+                    IconButton(
+                        onClick = {
+                            view.performTactileTick()
+                            isRecording = true
+                            recordStartTime = System.currentTimeMillis()
+                            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak your opinion or vote rationale...")
+                            }
+                            try {
+                                speechLauncher.launch(intent)
+                            } catch (e: Exception) {
+                                isRecording = false
+                            }
+                        },
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(colors.vermilion)
+                            .testTag("record_voice_comment_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Mic,
+                            contentDescription = stringResource(R.string.voice_comments_record),
+                            tint = Color.White,
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
                 }
             }
 
@@ -228,6 +235,48 @@ fun VoiceCommentsSection(
                             selectedContainerColor = colors.inkPrimary,
                             selectedLabelColor = colors.surfaceElevated
                         )
+                    )
+                }
+            }
+
+            // Recording Indicator
+            AnimatedVisibility(
+                visible = isRecording,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                val infiniteTransition = rememberInfiniteTransition(label = "rec_pulse")
+                val pulseAlpha by infiniteTransition.animateFloat(
+                    initialValue = 0.4f,
+                    targetValue = 1f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(durationMillis = 600, easing = LinearEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "rec_alpha"
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(colors.vermilion.copy(alpha = 0.08f))
+                        .border(1.dp, colors.vermilion.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(colors.vermilion.copy(alpha = pulseAlpha))
+                    )
+                    Text(
+                        text = stringResource(R.string.voice_comments_recording),
+                        fontFamily = JetBrainsMonoFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 11.sp,
+                        color = colors.vermilion
                     )
                 }
             }

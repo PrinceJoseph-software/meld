@@ -247,7 +247,9 @@
     <string name="settings_shape_picker">Geometric Shape</string>
     <string name="settings_palette_picker">Color Palette</string>
     <string name="settings_pattern_picker">Surface Pattern</string>
-    <string name="settings_face_gear_picker">Face &amp; Expression</string>
+    <string name="settings_face_gear_picker">Eye Expression</string>
+    <string name="settings_accessory_picker">Headgear &amp; Accessories</string>
+    <string name="settings_frame_picker">Border Frame Style</string>
     <string name="settings_haptics_label">Tactile Haptics</string>
     <string name="settings_haptics_desc">Subtle vibration on voting and dragging</string>
     <string name="settings_language_label">Application Language</string>

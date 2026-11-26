@@ -65,6 +65,14 @@ private val PALETTE_NAMES = listOf(
     "Steel Slate", "Royal Violet", "Sunset Coral", "Cyber Cyan"
 )
 
+private val ACCESSORY_LABELS = listOf(
+    "None", "Antenna", "Headphones", "Crown", "Halo", "Specs", "Spark"
+)
+
+private val FRAME_LABELS = listOf(
+    "Clean", "Bezel", "Gear Ring", "Arc"
+)
+
 private val MASK_ALIASES = listOf(
     "Agent 07", "Phantom", "Incognito", "Specter", "Cipher",
     "Shadow", "Ghost", "Enigma", "Mirage", "Nomad"
@@ -74,7 +82,9 @@ private enum class AnonymousCustomizerTab {
     SHAPES,
     PALETTES,
     PATTERNS,
-    EXPRESSIONS
+    EXPRESSIONS,
+    ACCESSORIES,
+    FRAMES
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -348,10 +358,11 @@ fun SettingsSheet(
                         }
                     }
 
-                    // Tabs for Geometric Shapes, Color Palettes, Surface Patterns, Face Gear
+                    // Tabs for Geometric Shapes, Color Palettes, Surface Patterns, Eyes, Accessories, Frames
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
                             .clip(RoundedCornerShape(8.dp))
                             .background(colors.surfaceElevated)
                             .padding(3.dp),
@@ -376,7 +387,9 @@ fun SettingsSheet(
                                         AnonymousCustomizerTab.SHAPES -> "Shape"
                                         AnonymousCustomizerTab.PALETTES -> "Palette"
                                         AnonymousCustomizerTab.PATTERNS -> "Pattern"
-                                        AnonymousCustomizerTab.EXPRESSIONS -> "Gear"
+                                        AnonymousCustomizerTab.EXPRESSIONS -> "Eyes"
+                                        AnonymousCustomizerTab.ACCESSORIES -> "Gear"
+                                        AnonymousCustomizerTab.FRAMES -> "Frame"
                                     },
                                     fontFamily = PlusJakartaSansFamily,
                                     fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
@@ -554,6 +567,98 @@ fun SettingsSheet(
                                             Text(
                                                 text = label,
                                                 fontFamily = PlusJakartaSansFamily,
+                                                fontSize = 12.sp,
+                                                color = if (isSelected) Color.White else colors.inkPrimary
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        AnonymousCustomizerTab.ACCESSORIES -> {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = "Headgear & Accessories",
+                                    fontFamily = JetBrainsMonoFamily,
+                                    fontSize = 11.sp,
+                                    color = colors.inkSecondary
+                                )
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    contentPadding = PaddingValues(vertical = 4.dp)
+                                ) {
+                                    itemsIndexed(ACCESSORY_LABELS) { index, label ->
+                                        val isSelected = draftSpec.accessory == index
+                                        Row(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(if (isSelected) colors.vermilion else colors.surfaceElevated)
+                                                .border(1.dp, if (isSelected) colors.vermilion else colors.hairline, RoundedCornerShape(10.dp))
+                                                .clickable {
+                                                    view.performTactileTick()
+                                                    draftSpec = draftSpec.copy(accessory = index)
+                                                    testPushPulse += 1
+                                                }
+                                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            GeometricAvatar(
+                                                avatarStyleIndex = draftSpec.copy(accessory = index).toPacked(),
+                                                colorIndex = draftColor,
+                                                size = 24.dp,
+                                                borderColor = Color.Transparent
+                                            )
+                                            Text(
+                                                text = label,
+                                                fontFamily = PlusJakartaSansFamily,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 12.sp,
+                                                color = if (isSelected) Color.White else colors.inkPrimary
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        AnonymousCustomizerTab.FRAMES -> {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = "Border Frame Style",
+                                    fontFamily = JetBrainsMonoFamily,
+                                    fontSize = 11.sp,
+                                    color = colors.inkSecondary
+                                )
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    contentPadding = PaddingValues(vertical = 4.dp)
+                                ) {
+                                    itemsIndexed(FRAME_LABELS) { index, label ->
+                                        val isSelected = draftSpec.frame == index
+                                        Row(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(if (isSelected) colors.vermilion else colors.surfaceElevated)
+                                                .border(1.dp, if (isSelected) colors.vermilion else colors.hairline, RoundedCornerShape(10.dp))
+                                                .clickable {
+                                                    view.performTactileTick()
+                                                    draftSpec = draftSpec.copy(frame = index)
+                                                    testPushPulse += 1
+                                                }
+                                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            GeometricAvatar(
+                                                avatarStyleIndex = draftSpec.copy(frame = index).toPacked(),
+                                                colorIndex = draftColor,
+                                                size = 24.dp,
+                                                borderColor = Color.Transparent
+                                            )
+                                            Text(
+                                                text = label,
+                                                fontFamily = PlusJakartaSansFamily,
+                                                fontWeight = FontWeight.SemiBold,
                                                 fontSize = 12.sp,
                                                 color = if (isSelected) Color.White else colors.inkPrimary
                                             )

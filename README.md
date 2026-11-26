@@ -1,80 +1,98 @@
-# Meld ⚡
+<p align="center">
+  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png" width="96" height="96" alt="Meld App Logo" />
+</p>
+
+<h1 align="center">Meld</h1>
 
 <p align="center">
-  <strong>Instant, zero-login group decisions and frictionless time coordination.</strong>
+  <strong>Instant, zero-login group decisions and frictionless time coordination for Android.</strong>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=flat&logo=android&logoColor=white" alt="Platform" />
-  <img src="https://img.shields.io/badge/Kotlin-2.0+-7F52FF?style=flat&logo=kotlin&logoColor=white" alt="Kotlin" />
+  <img src="https://img.shields.io/badge/Kotlin-2.4+-7F52FF?style=flat&logo=kotlin&logoColor=white" alt="Kotlin" />
   <img src="https://img.shields.io/badge/Jetpack_Compose-Material_3-4285F4?style=flat&logo=jetpackcompose&logoColor=white" alt="Jetpack Compose" />
   <img src="https://img.shields.io/badge/Min_SDK-24-orange?style=flat" alt="Min SDK" />
   <img src="https://img.shields.io/badge/Target_SDK-36-blue?style=flat" alt="Target SDK" />
-  <img src="https://img.shields.io/badge/Architecture-MVI%20%2F%20Clean-success?style=flat" alt="Architecture" />
+  <img src="https://img.shields.io/badge/Architecture-MVVM%20%2F%20Offline--First-success?style=flat" alt="Architecture" />
 </p>
 
 ---
 
-## 📌 Overview
+## Overview
 
-**Meld** eliminates the friction of group planning, polling, and event scheduling. No mandatory sign-ups, accounts, or friction-heavy invites: create a room in seconds, share the link or QR code, and let participants collaborate, vote, and lock in decisions in real time.
+**Meld** eliminates the friction of group planning, polling, and event scheduling. With no mandatory sign-ups or account creation, users can spin up a decision room in seconds, share a link or QR code, and let participants collaborate, vote, and reach consensus in real time.
 
-Built natively on Android using **Jetpack Compose**, **Kotlin Coroutines / Flow**, **Room Persistence**, and **Material Design 3**, Meld delivers fluid motion, tactile haptics, and robust offline-first synchronization.
-
----
-
-## ✨ Features
-
-- **⚡ Zero-Login Decision Rooms**: Create instant decision rooms or join using lightweight 4–10 character alphanumeric room codes or deep links (`meld://r/<code>`).
-- **🕒 Smart Time Coordination & Calendar Sync**:
-  - Connect with device calendars or import `.ics` files without sharing credentials.
-  - Automatically analyze availability and surface conflict hints.
-  - Time-slot distribution charts for group availability.
-- **🗳️ Flexible Polling & Consensus**:
-  - Single-choice, multiple-choice, ranked-choice, or time-window polling.
-  - Runoff voting and instant creator controls (crown winner, close/reopen room).
-- **🎨 Custom Geometric Avatars**: Built-in avatar generator ("Avatar Studio") producing deterministic, unique geometric avatars with home-screen widget support.
-- **🎙️ Voice Comments**: Drop asynchronous audio notes directly inside decision rooms.
-- **📱 Home Screen App Widgets**: Glanceable live poll updates and personal identity status directly on your Android launcher (`MeldPollWidget`, `MeldAvatarWidget`).
-- **📴 Offline-First Architecture**: Vote and deliberate even when offline; pending actions are queued and synced cleanly when connectivity returns.
-- **🌐 Multilingual Support**: Localized into 17+ languages (English, Arabic, German, Spanish, French, Hindi, Japanese, Portuguese, Russian, Chinese, etc.).
-- **🔒 Security & Privacy by Design**:
-  - Input sanitization against injection and malformed parameters.
-  - Constant-time verification for creator authorization tokens.
-  - Zero broad storage permissions; sensitive identity and creator tokens excluded from unencrypted device backup/extraction.
+Built natively on Android with **Jetpack Compose**, **Kotlin Coroutines & Flow**, **Room**, **DataStore**, **WorkManager**, and **Material Design 3**, Meld combines tactile physics-driven UI with offline-first persistence and privacy-conscious defaults.
 
 ---
 
-## 🛠️ Architecture & Tech Stack
+## Key Features
 
-```
+- **Zero-Login Decision Rooms**: Create instant rooms or join via 4–10 character alphanumeric codes and deep links (`meld://r/<code>`).
+- **Time Coordination & Calendar Sync**:
+  - Read device calendars (with runtime permission) or import `.ics` files locally without sharing credentials.
+  - Surface free-time block suggestions, Yes/No distribution charts, consensus overlap windows, and high-priority participant conflict alerts.
+- **Flexible Polling & Creator Controls**:
+  - Supports Quick Polls and Time Slots, single or multiple picks, collaborative friend-added options, and configurable poll deadlines.
+  - Creator tools for crowning winners, generating runoff tie-breakers, resetting votes, and reopening rooms.
+- **Avatar Studio & Anonymous Disguise**:
+  - Procedural Bauhaus geometric avatar system across 5 customizable layers (chassis, eyes, gear/accessories, surface pattern, border frame) and 8 color palettes.
+  - Dedicated anonymous user badge customizer in Settings for secret-ballot rooms, paired with network-level anti-spam ballot locking.
+- **Voice Opinions**:
+  - Record spoken rationale via Android speech recognition, attach comments to a general thread or specific poll option, and play them back with animated waveform equalizers via Text-to-Speech.
+- **Home Screen App Widgets**:
+  - Glanceable widgets built with Jetpack Glance (`MeldPollWidget`, `MeldAvatarWidget`) for quick voting and status tracking directly from the launcher.
+- **Offline-First Synchronization**:
+  - Votes cast while offline are queued in a local outbox (`pending_votes`), reflected optimistically in the UI, and flushed automatically when connectivity returns.
+- **Multilingual Localization**:
+  - Localized across 18 language packs (English, Arabic, German, Spanish, French, Hindi, Indonesian, Italian, Japanese, Korean, Dutch, Polish, Portuguese, Russian, Swedish, Turkish, Vietnamese, Chinese).
+- **Security & Privacy by Design**:
+  - Strict input sanitization (`sanitizeMeldInput`) and room code validation (`^[A-Z0-9]{4,10}$`) at deep-link and repository boundaries.
+  - Constant-time creator token verification (`MessageDigest.isEqual`).
+  - Cloud backup and device transfer disabled (`android:allowBackup="false"`) with explicit exclusions for Room databases and DataStore identity files.
+
+---
+
+## Architecture & Project Structure
+
+```text
 app/src/main/java/com/example/
-├── data/               # Room DB, DataStore, Repositories, Calendar Parser, Offline sync
-├── notifications/      # WorkManager deadline schedulers, Android notification channels
-├── ui/                 # Jetpack Compose UI (Screens, Theme, Custom Components, Haptics)
-│   ├── components/     # Tactile controls, option cards, charts, bottom sheets, avatars
+├── data/               # Room entities/DAO/DB, DataStore IdentityStore, MeldRepository,
+│                       # CalendarSync (.ics & device), ConsensusInsightCalculator,
+│                       # ConflictDetector, AnonymousSpamGuard, ConnectivityObserver
+├── notifications/      # WorkManager deadline workers and notification channels
+├── ui/
+│   ├── components/     # AvatarStudioSheet, SettingsSheet, GeometricAvatar,
+│   │                   # VoiceCommentsSection, OptionCard, DecisionArenaComponents,
+│   │                   # TimeSlotDistributionChart, CalendarSyncSheet, SharePopoverSheet
 │   ├── screens/        # CreateRoomScreen, DecisionRoomScreen
-│   └── theme/          # Material 3 colors, typography, dynamic themes
-└── widget/             # Android AppWidget providers and bitmap renderers
+│   ├── theme/          # Warm Archival Paper & Anodized Obsidian color tokens, typography
+│   └── MeldViewModel.kt
+└── widget/             # Glance AppWidget providers and bitmap avatar renderers
 ```
-
-- **UI Framework**: [Jetpack Compose](https://developer.android.com/jetpack/compose) with Material 3
-- **Language**: [Kotlin](https://kotlinlang.org/) (Coroutines, StateFlow / Flow)
-- **Local Persistence**: [Room Database](https://developer.android.com/training/data-storage/room) & [Jetpack DataStore](https://developer.android.com/topic/libraries/architecture/datastore)
-- **Background Tasks**: [WorkManager](https://developer.android.com/topic/libraries/architecture/workmanager) for room deadlines & offline sync
-- **Fonts & Design**: Instrument Serif, JetBrains Mono, Plus Jakarta Sans, Custom Tactile Haptics
 
 ---
 
-## 🚀 Getting Started
+## Tech Stack
+
+- **UI**: Jetpack Compose, Material 3, Custom Canvas Rendering, Tactile Haptics
+- **Language**: Kotlin, Coroutines, StateFlow / Flow
+- **Persistence**: Room (`androidx.room`), Jetpack Preferences DataStore
+- **Background & Widgets**: WorkManager, Jetpack Glance
+- **Testing**: JUnit 4, Robolectric, Kotlinx Coroutines Test, Room In-Memory Database
+
+---
+
+## Getting Started
 
 ### Prerequisites
 
-- [Android Studio Ladybug | 2024.2+](https://developer.android.com/studio) or newer
+- [Android Studio](https://developer.android.com/studio) (Ladybug 2024.2+ or newer)
 - JDK 17+
-- Android SDK (API Level 24 minimum, target API 36)
+- Android SDK (Min SDK 24, Target SDK 36)
 
-### Installation & Run
+### Setup & Build
 
 1. **Clone the repository**:
    ```bash
@@ -83,49 +101,33 @@ app/src/main/java/com/example/
    ```
 
 2. **Open in Android Studio**:
-   - Launch Android Studio, select **Open**, and choose the `meld` directory.
-   - Wait for Gradle sync to complete.
+   - Select **Open** and choose the `meld` root directory.
+   - Allow Gradle sync to complete.
 
 3. **Configure Environment (Optional)**:
-   - Copy `.env.example` to `.env` if integrating with Gemini API or external AI capabilities:
+   - Copy `.env.example` to `.env` if configuring API keys:
      ```bash
      cp .env.example .env
      ```
-   - Provide your API keys inside `.env`.
 
-4. **Build and Run**:
-   - Select your target device or Android emulator.
-   - Click **Run** (`Shift + F10`) or execute via Gradle:
-     ```bash
-     ./gradlew assembleDebug
-     ```
+4. **Build and Test**:
+   ```bash
+   ./gradlew assembleDebug
+   ./gradlew testDebugUnitTest
+   ```
 
 ---
 
-## 🔗 Deep Links & Integration
+## Deep Links
 
-Meld supports direct deep-linking into decision rooms:
+Meld supports direct deep-linking into decision rooms using the `meld://r/{ROOM_CODE}` scheme:
 
-```
-meld://r/{ROOM_CODE}
-```
-
-Example intent test via ADB:
 ```bash
 adb shell am start -a android.intent.action.VIEW -d "meld://r/PROJ99"
 ```
 
 ---
 
-## 🛡️ Security
-
-Meld prioritizes data integrity and device security:
-- Strict alphanumeric whitelist validation for room identifiers.
-- Bounded input parsing on external ICS calendar files to prevent stream denial-of-service.
-- Secure local token storage using Android DataStore with cloud backup exclusions.
-
----
-
-## 📄 License
+## License
 
 This project is open-source. See the repository for details and licensing terms.
