@@ -93,6 +93,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.princejoseph.meld.BuildConfig
 import io.github.princejoseph.meld.R
 import io.github.princejoseph.meld.data.ConflictAlert
 import io.github.princejoseph.meld.data.ConsensusInsightCalculator
@@ -635,7 +636,8 @@ fun DecisionRoomScreen(
                     }
                 }
 
-                if (!effectiveLocked) {
+                // Developer-only tools: fake voters / offline toggle must never reach release users.
+                if (BuildConfig.DEBUG && !effectiveLocked) {
                     item(key = "utility_sim_bar") {
                         Row(
                             modifier = Modifier
@@ -744,7 +746,8 @@ fun DecisionRoomScreen(
                                             context = context,
                                             roomId = room.id,
                                             title = room.question,
-                                            slotLabel = winningOption.label
+                                            slotLabel = winningOption.label,
+                                            explicitWindow = winningOption.slotStartMs?.let { winningOption.slotWindowMs() }
                                         )
                                     },
                                     modifier = Modifier
@@ -1693,9 +1696,10 @@ private fun launchCalendarInsertIntent(
     context: android.content.Context,
     roomId: String,
     title: String,
-    slotLabel: String
+    slotLabel: String,
+    explicitWindow: Pair<Long, Long>? = null
 ) {
-    val window = ConsensusInsightCalculator.resolveCalendarEventWindowMs(slotLabel)
+    val window = explicitWindow ?: ConsensusInsightCalculator.resolveCalendarEventWindowMs(slotLabel)
     val intent = Intent(Intent.ACTION_INSERT).apply {
         data = CalendarContract.Events.CONTENT_URI
         putExtra(CalendarContract.Events.TITLE, title)

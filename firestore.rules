@@ -1,0 +1,149 @@
+rules_version = '2';
+
+// Meld security rules. Every client (Android app and PWA) signs in with Firebase
+// Anonymous Auth, so "zero-login" still gives each device a server-verified uid.
+//
+// Model (see docs/DATA_MODEL.md):
+//   rooms/{code}                     settings, ownerUid
+//   rooms/{code}/options/{optionId}
+//   rooms/{code}/ballots/{authUid}   one ballot per device: optionIds
+//   rooms/{code}/comments/{id}
+//   rooms/{code}/audio/{id}          base64 voice note
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function roomData(code) {
+      return get(/databases/$(database)/documents/rooms/$(code)).data;
+    }
+
+    function isOwner(code) {
+      return signedIn() && roomData(code).ownerUid == request.auth.uid;
+    }
+
+    // Room state including writes in the same batch (room + options are created together).
+    function isOwnerAfter(code) {
+      return signedIn()
+        && existsAfter(/databases/$(database)/documents/rooms/$(code))
+        && getAfter(/databases/$(database)/documents/rooms/$(code)).data.ownerUid == request.auth.uid;
+    }
+
+    // Voting is open until the owner closes the room or its deadline passes (server clock).
+    function votingOpen(code) {
+      let r = roomData(code);
+      return r.isLocked == false &&
+        (r.deadlineEpochMs == null || request.time.toMillis() < r.deadlineEpochMs);
+    }
+
+    function isShortString(v, max) {
+      return v is string && v.size() <= max;
+    }
+
+    function optionalNumber(v) {
+      return v == null || v is number;
+    }
+
+    function validRoom(d) {
+      return d.keys().hasOnly([
+          'question', 'mode', 'allowMultiple', 'allowFriendsToAdd', 'isAnonymous',
+          'deadlineEpochMs', 'ownerUid', 'winnerOptionId', 'isLocked',
+          'createdAtEpochMs', 'expiresAtEpochMs', 'updatedAtEpochMs', 'schemaVersion'])
+        && isShortString(d.question, 200) && d.question.size() > 0
+        && d.mode in ['QUICK_POLL', 'TIME_SLOTS']
+        && d.allowMultiple is bool && d.allowFriendsToAdd is bool && d.isAnonymous is bool
+        && d.isLocked is bool
+        && optionalNumber(d.deadlineEpochMs)
+        && (d.winnerOptionId == null || isShortString(d.winnerOptionId, 80))
+        && d.createdAtEpochMs is number && d.expiresAtEpochMs is number;
+    }
+
+    match /rooms/{code} {
+      // Knowing the code is the invitation. Listing all rooms is not allowed.
+      allow get: if signedIn();
+      allow list: if false;
+
+      allow create: if signedIn()
+        && code.matches('^[A-Z0-9]{4,10}$')
+        && validRoom(request.resource.data)
+        && request.resource.data.ownerUid == request.auth.uid;
+
+      // Only the owner changes settings / closes / reopens; ownership never moves.
+      allow update: if isOwner(code)
+        && validRoom(request.resource.data)
+        && request.resource.data.ownerUid == resource.data.ownerUid;
+
+      allow delete: if isOwner(code);
+
+      match /options/{optionId} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && (isOwnerAfter(code) || (roomData(code).allowFriendsToAdd == true && votingOpen(code)))
+          && request.resource.data.keys().hasOnly(['label', 'sortOrder', 'slotStartMs', 'slotEndMs', 'createdByUid'])
+          && isShortString(request.resource.data.label, 140) && request.resource.data.label.size() > 0
+          && request.resource.data.sortOrder is number
+          && optionalNumber(request.resource.data.slotStartMs)
+          && optionalNumber(request.resource.data.slotEndMs)
+          && request.resource.data.createdByUid == request.auth.uid;
+        allow update, delete: if isOwner(code);
+      }
+
+      match /ballots/{voterAuthUid} {
+        allow read: if signedIn();
+
+        // Each device writes only its own ballot, only while voting is open.
+        allow create, update: if signedIn()
+          && voterAuthUid == request.auth.uid
+          && votingOpen(code)
+          && request.resource.data.keys().hasOnly([
+               'voterUid', 'voterName', 'badgeColorIndex', 'avatarStyleIndex', 'optionIds', 'updatedAtEpochMs'])
+          && isShortString(request.resource.data.voterUid, 64)
+          && isShortString(request.resource.data.voterName, 28)
+          && request.resource.data.badgeColorIndex is number
+          && request.resource.data.avatarStyleIndex is number
+          && request.resource.data.updatedAtEpochMs is number
+          && request.resource.data.optionIds is list
+          && request.resource.data.optionIds.size() >= 1
+          && request.resource.data.optionIds.size() <= 20
+          && (roomData(code).allowMultiple == true || request.resource.data.optionIds.size() == 1);
+
+        // Withdraw your own ballot while open; the owner may reset all ballots.
+        allow delete: if signedIn()
+          && ((voterAuthUid == request.auth.uid && votingOpen(code)) || isOwner(code));
+      }
+
+      match /comments/{commentId} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && votingOpen(code)
+          && request.resource.data.authorAuthUid == request.auth.uid
+          && request.resource.data.keys().hasOnly([
+               'authorAuthUid', 'voterUid', 'voterName', 'badgeColorIndex', 'avatarStyleIndex',
+               'optionId', 'transcript', 'durationSeconds', 'createdAtEpochMs', 'hasAudio', 'audioMimeType'])
+          && isShortString(request.resource.data.transcript, 300)
+          && isShortString(request.resource.data.voterName, 28)
+          && request.resource.data.durationSeconds is number
+          && request.resource.data.hasAudio is bool;
+        allow update: if false;
+        // Authors delete their own opinions; the owner can moderate their room.
+        allow delete: if signedIn()
+          && (resource.data.authorAuthUid == request.auth.uid || isOwner(code));
+      }
+
+      match /audio/{commentId} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && votingOpen(code)
+          && request.resource.data.authorAuthUid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['authorAuthUid', 'mimeType', 'dataBase64'])
+          && isShortString(request.resource.data.mimeType, 40)
+          && isShortString(request.resource.data.dataBase64, 700000);
+        allow update: if false;
+        allow delete: if signedIn()
+          && (resource.data.authorAuthUid == request.auth.uid || isOwner(code));
+      }
+    }
+  }
+}

@@ -20,7 +20,9 @@ data class RoomEntity(
     val winnerOptionId: String? = null,
     val isLocked: Boolean = false,
     val createdAtEpochMs: Long,
-    val expiresAtEpochMs: Long
+    val expiresAtEpochMs: Long,
+    /** Server identity (Firebase anonymous-auth uid) of the creator; null for local-only rooms. */
+    val ownerUid: String? = null
 )
 
 @Entity(
@@ -39,7 +41,10 @@ data class OptionEntity(
     @PrimaryKey val id: String,
     val roomId: String,
     val label: String,
-    val sortOrder: Int
+    val sortOrder: Int,
+    /** Machine-readable slot window for TIME_SLOTS rooms; the label is display-only. */
+    val slotStartMs: Long? = null,
+    val slotEndMs: Long? = null
 )
 
 @Entity(

@@ -1,54 +1,94 @@
 package io.github.princejoseph.meld.data
 
 import android.content.Context
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emptyFlow
+
+/** One voter's complete ballot in a room (the server stores one document per voter). */
+data class RemoteBallot(
+    val voterUid: String,
+    val voterName: String,
+    val badgeColorIndex: Int,
+    val avatarStyleIndex: Int,
+    val optionIds: List<String>,
+    val updatedAtEpochMs: Long
+)
+
+/** A voice/typed opinion as stored remotely; audio bytes are fetched lazily. */
+data class RemoteComment(
+    val comment: VoiceCommentEntity,
+    val hasAudio: Boolean,
+    val audioMimeType: String?
+)
+
+/** Server state of one room. `room.creatorToken` is always blank: ownership is `ownerUid`. */
+data class RemoteRoomSnapshot(
+    val room: RoomEntity,
+    val options: List<OptionEntity>,
+    val ballots: List<RemoteBallot>,
+    val comments: List<RemoteComment>
+)
 
 /**
- * Abstraction for syncing local Room mutations to a remote multi-device backend.
+ * Cloud sync for rooms. Local Room tables remain the app's source of truth for the UI;
+ * this gateway pushes local mutations and mirrors remote state back in.
  *
- * Production implementations (e.g. Firestore, Supabase) live in a separate module or
- * behind a build variant so the core app compiles without backend SDKs.
+ * The Firestore implementation is offline-first: writes made without a connection are
+ * queued by the Firestore SDK and delivered when the device reconnects.
  */
 interface RemoteSyncGateway {
+    /** False when no backend is configured (no google-services.json): the app runs local-only. */
+    val isEnabled: Boolean
+
+    /** Firebase anonymous-auth uid once signed in. */
+    val authUid: StateFlow<String?>
+
+    suspend fun ensureSignedIn(): String?
     suspend fun pushRoom(room: RoomEntity, options: List<OptionEntity>)
-    suspend fun pushVote(vote: VoteEntity, allowMultiple: Boolean)
-    suspend fun removeVote(roomId: String, optionId: String, voterUid: String)
-    suspend fun pushVoiceComment(comment: VoiceCommentEntity)
+    suspend fun pushRoomState(room: RoomEntity)
+    suspend fun pushOption(option: OptionEntity)
+
+    /** Writes (or, when [RemoteBallot.optionIds] is empty, deletes) this device's ballot. */
+    suspend fun pushBallot(roomId: String, ballot: RemoteBallot)
+    suspend fun clearBallots(roomId: String)
+    suspend fun pushVoiceComment(comment: VoiceCommentEntity, audio: ByteArray?, audioMimeType: String?)
     suspend fun deleteVoiceComment(roomId: String, commentId: String)
+    suspend fun fetchRoom(roomId: String): RemoteRoomSnapshot?
+    fun observeRoom(roomId: String): Flow<RemoteRoomSnapshot>
+    suspend fun fetchAudio(roomId: String, commentId: String): Pair<ByteArray, String>?
 }
 
-/**
- * Default no-op gateway used when no remote backend is configured.
- * All mutations are stored locally and can be synced later when a backend is wired up.
- */
+/** Local-only mode: everything is stored on the device and nothing leaves it. */
 object NoOpRemoteSyncGateway : RemoteSyncGateway {
+    override val isEnabled: Boolean = false
+    override val authUid: StateFlow<String?> = MutableStateFlow(null)
+    override suspend fun ensureSignedIn(): String? = null
     override suspend fun pushRoom(room: RoomEntity, options: List<OptionEntity>) = Unit
-    override suspend fun pushVote(vote: VoteEntity, allowMultiple: Boolean) = Unit
-    override suspend fun removeVote(roomId: String, optionId: String, voterUid: String) = Unit
-    override suspend fun pushVoiceComment(comment: VoiceCommentEntity) = Unit
+    override suspend fun pushRoomState(room: RoomEntity) = Unit
+    override suspend fun pushOption(option: OptionEntity) = Unit
+    override suspend fun pushBallot(roomId: String, ballot: RemoteBallot) = Unit
+    override suspend fun clearBallots(roomId: String) = Unit
+    override suspend fun pushVoiceComment(comment: VoiceCommentEntity, audio: ByteArray?, audioMimeType: String?) = Unit
     override suspend fun deleteVoiceComment(roomId: String, commentId: String) = Unit
+    override suspend fun fetchRoom(roomId: String): RemoteRoomSnapshot? = null
+    override fun observeRoom(roomId: String): Flow<RemoteRoomSnapshot> = emptyFlow()
+    override suspend fun fetchAudio(roomId: String, commentId: String): Pair<ByteArray, String>? = null
 }
 
 /**
- * Factory that returns the appropriate [RemoteSyncGateway] for the current build.
- *
- * When Firebase dependencies are on the classpath and `google-services.json` is present,
- * this will attempt to load the Firestore-backed implementation via reflection. Otherwise
- * it falls back to [NoOpRemoteSyncGateway], keeping the app fully functional offline.
- *
- * To enable Firestore sync:
- *   1. Uncomment `firebase-bom` and `firebase-firestore` in `app/build.gradle.kts`
- *   2. Add `google-services.json` to `app/`
- *   3. Create `FirestoreRemoteSyncGateway` implementing [RemoteSyncGateway]
+ * Returns the process-wide gateway: Firestore when Firebase is configured
+ * (app/google-services.json present at build time), otherwise local-only.
  */
 object RemoteSyncGatewayFactory {
+    @Volatile
+    private var instance: RemoteSyncGateway? = null
+
     fun create(context: Context): RemoteSyncGateway {
-        return try {
-            val clazz = Class.forName(
-                "io.github.princejoseph.meld.data.FirestoreRemoteSyncGateway"
-            )
-            clazz.getConstructor(Context::class.java).newInstance(context) as RemoteSyncGateway
-        } catch (_: Exception) {
-            NoOpRemoteSyncGateway
+        return instance ?: synchronized(this) {
+            instance ?: (FirestoreRemoteSyncGateway.createOrNull(context.applicationContext)
+                ?: NoOpRemoteSyncGateway).also { instance = it }
         }
     }
 }

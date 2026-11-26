@@ -5,7 +5,7 @@
 <h1 align="center">Meld</h1>
 
 <p align="center">
-  <strong>Instant, zero-login group decisions and frictionless time coordination for Android.</strong>
+  <strong>Instant, zero-login group decisions and time coordination — offline-first, on Android and the web.</strong>
 </p>
 
 <p align="center">
@@ -22,7 +22,7 @@
 
 ## Overview
 
-**Meld** eliminates the friction of group planning, polling, and event scheduling. With no mandatory sign-ups or account creation, users can spin up a decision room in seconds, share a link or QR code, and let participants collaborate, vote, and reach consensus in real time.
+**Meld** eliminates the friction of group planning, polling, and event scheduling. With no sign-ups, anyone can spin up a decision room in seconds, share a link or QR code, and let participants vote and reach consensus in real time — from the Android app or any browser via the installable web app (PWA). Everything works offline and syncs when the connection returns.
 
 Built natively on Android with **Jetpack Compose**, **Kotlin Coroutines & Flow**, **Room**, **DataStore**, **WorkManager**, and **Material Design 3**, Meld combines tactile physics-driven UI with offline-first persistence and privacy-conscious defaults.
 
@@ -30,7 +30,8 @@ Built natively on Android with **Jetpack Compose**, **Kotlin Coroutines & Flow**
 
 ## Key Features
 
-- **Zero-Login Decision Rooms**: Create instant rooms or join via 4–10 character alphanumeric codes and deep links (`meld://r/<code>`).
+- **Zero-Login Decision Rooms, Everywhere**: Create rooms on Android or the web, share `https://<your-site>/r/<code>` (opens the app if installed via App Links, otherwise the PWA), or join with the 6-character code.
+- **Offline-First Cloud Sync**: Firestore with Anonymous Auth. Votes, rooms and opinions are written locally first, queued while offline, and synced on reconnect. Server-side security rules enforce one ballot per device, creator-only controls and deadlines.
 - **Time Coordination & Calendar Sync**:
   - Read device calendars (with runtime permission) or import `.ics` files locally without sharing credentials.
   - Surface free-time block suggestions, Yes/No distribution charts, consensus overlap windows, and high-priority participant conflict alerts.
@@ -39,18 +40,18 @@ Built natively on Android with **Jetpack Compose**, **Kotlin Coroutines & Flow**
   - Creator tools for crowning winners, generating runoff tie-breakers, resetting votes, and reopening rooms.
 - **Avatar Studio & Anonymous Disguise**:
   - Procedural Bauhaus geometric avatar system across 5 customizable layers (chassis, eyes, gear/accessories, surface pattern, border frame) and 8 color palettes.
-  - Dedicated anonymous user badge customizer in Settings for secret-ballot rooms, paired with network-level anti-spam ballot locking.
+  - Dedicated anonymous mask customizer in Settings for secret-ballot rooms (names hidden; one ballot per device enforced server-side).
 - **Voice Opinions**:
-  - Record spoken rationale via Android speech recognition, attach comments to a general thread or specific poll option, and play them back with animated waveform equalizers via Text-to-Speech.
+  - Record voice notes (up to 60 s) or type an opinion, attached to the room or a specific option; voice notes sync to everyone in the room.
 - **Home Screen App Widgets**:
   - Glanceable widgets built with Jetpack Glance (`MeldPollWidget`, `MeldAvatarWidget`) for quick voting and status tracking directly from the launcher.
 - **Offline-First Synchronization**:
-  - Votes cast while offline are queued in a local outbox (`pending_votes`), reflected optimistically in the UI, and flushed automatically when connectivity returns.
+  - Votes cast while offline are queued in a local outbox (`pending_votes`), reflected optimistically in the UI, and pushed to the cloud automatically when connectivity returns.
 - **Multilingual Localization**:
   - Localized across 18 language packs (English, Arabic, German, Spanish, French, Hindi, Indonesian, Italian, Japanese, Korean, Dutch, Polish, Portuguese, Russian, Swedish, Turkish, Vietnamese, Chinese).
 - **Security & Privacy by Design**:
   - Strict input sanitization (`sanitizeMeldInput`) and room code validation (`^[A-Z0-9]{4,10}$`) at deep-link and repository boundaries.
-  - Constant-time creator token verification (`MessageDigest.isEqual`).
+  - Server-enforced permissions in `firestore.rules`, tested against the Firestore emulator (`rules-tests/`).
   - Cloud backup and device transfer disabled (`android:allowBackup="false"`) with explicit exclusions for Room databases and DataStore identity files.
 
 ---
@@ -71,6 +72,18 @@ app/src/main/java/io/github/princejoseph/meld/
 │   ├── theme/          # Warm Archival Paper & Anodized Obsidian color tokens, typography
 │   └── MeldViewModel.kt
 └── widget/             # Glance AppWidget providers and bitmap avatar renderers
+```
+
+---
+
+## Going Live (Firebase + Vercel)
+
+See **[docs/SETUP.md](docs/SETUP.md)** for the 20-minute setup (Firebase project, Vercel deployment of `web/`, Android config), **[docs/RELEASING.md](docs/RELEASING.md)** for signed releases, and **[docs/DATA_MODEL.md](docs/DATA_MODEL.md)** for the shared data model. Without Firebase configured, the Android app runs local-only.
+
+```text
+web/          React + Vite PWA (deploy to Vercel, root directory = web)
+rules-tests/  Firestore security-rule tests (npm test, uses the emulator)
+firestore.rules, firebase.json
 ```
 
 ---
