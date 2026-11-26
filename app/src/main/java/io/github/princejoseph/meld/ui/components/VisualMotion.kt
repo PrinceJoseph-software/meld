@@ -26,11 +26,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PointMode
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -42,23 +44,33 @@ import kotlin.random.Random
 
 /**
  * Tactile architectural drafting dot-matrix surface pattern.
+ *
+ * Intended for full-screen backgrounds only (screens, full-screen dialogs) — never inside
+ * cards or buttons, where the dots read as noise behind text. The grid is centred so the
+ * left/right and top/bottom margins match, and the dot positions are cached per size.
  */
-fun Modifier.draftingDotGrid(dotColor: Color): Modifier = this.drawBehind {
+fun Modifier.draftingDotGrid(dotColor: Color): Modifier = this.drawWithCache {
     val spacingPx = 24.dp.toPx()
     val radiusPx = 1.dp.toPx()
-    val cols = (size.width / spacingPx).toInt() + 1
-    val rows = (size.height / spacingPx).toInt() + 1
-
+    val cols = (size.width / spacingPx).toInt()
+    val rows = (size.height / spacingPx).toInt()
+    val startX = (size.width - cols * spacingPx) / 2f
+    val startY = (size.height - rows * spacingPx) / 2f
+    val points = ArrayList<Offset>((cols + 1) * (rows + 1))
     for (r in 0..rows) {
-        val y = r * spacingPx
+        val y = startY + r * spacingPx
         for (c in 0..cols) {
-            val x = c * spacingPx
-            drawCircle(
-                color = dotColor,
-                radius = radiusPx,
-                center = Offset(x, y)
-            )
+            points.add(Offset(startX + c * spacingPx, y))
         }
+    }
+    onDrawBehind {
+        drawPoints(
+            points = points,
+            pointMode = PointMode.Points,
+            color = dotColor,
+            strokeWidth = radiusPx * 2f,
+            cap = StrokeCap.Round
+        )
     }
 }
 
