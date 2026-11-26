@@ -15,6 +15,7 @@
   <img src="https://img.shields.io/badge/Min_SDK-24-orange?style=flat" alt="Min SDK" />
   <img src="https://img.shields.io/badge/Target_SDK-36-blue?style=flat" alt="Target SDK" />
   <img src="https://img.shields.io/badge/Architecture-MVVM%20%2F%20Offline--First-success?style=flat" alt="Architecture" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=flat" alt="License: MIT" /></a>
 </p>
 
 ---
@@ -128,6 +129,28 @@ adb shell am start -a android.intent.action.VIEW -d "meld://r/PROJ99"
 
 ---
 
+## Download
+
+Pre-built Android APKs are published on the [GitHub Releases](https://github.com/PrinceJoseph-software/meld/releases) page. Download the latest `.apk` asset directly on your Android device (Android 7.0 / API 24+) to install.
+
+---
+
+## Issues & Support
+
+Found a bug, UI glitch, or have a feature request?
+
+- **Report a Bug**: Open a [Bug Report](https://github.com/PrinceJoseph-software/meld/issues/new?template=bug_report.md) with your Android version, device model, and steps to reproduce.
+- **Request a Feature**: Submit a [Feature Request](https://github.com/PrinceJoseph-software/meld/issues/new?template=feature_request.md) describing the use case.
+- **Browse Open Issues**: View active discussions and known issues on the [Issue Tracker](https://github.com/PrinceJoseph-software/meld/issues).
+
+---
+
+## Contributing
+
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for local setup instructions, test commands, and code quality guidelines before opening a pull request.
+
+---
+
 ## License
 
-This project is open-source. See the repository for details and licensing terms.
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for full details.

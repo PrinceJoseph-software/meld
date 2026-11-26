@@ -778,11 +778,21 @@ class MeldRepository(
             appendLine("Meld Decision: ${room.question}")
             if (room.isLocked && winner != null) {
                 appendLine("Winner: ${winner.label} (${winner.voteCount} votes, ${winner.percentage}%)")
+            } else if (room.decisionInsight != null) {
+                appendLine("Leading Consensus: ${room.decisionInsight.suggestedLabel} (${room.decisionInsight.overlapPercentage}% overlap)")
             }
             appendLine()
             room.options.forEachIndexed { idx, opt ->
                 val marker = if (opt.isWinner) "★" else "${idx + 1}."
                 appendLine("$marker ${opt.label} — ${opt.voteCount} (${opt.percentage}%)")
+            }
+            if (room.voiceComments.isNotEmpty()) {
+                appendLine()
+                appendLine("Voice Opinions:")
+                room.voiceComments.take(3).forEach { vc ->
+                    val target = vc.optionLabel?.let { " [$it]" } ?: ""
+                    appendLine("- \"${vc.transcript}\" — ${vc.voterName}$target")
+                }
             }
             appendLine()
             append(room.shareUrl)
