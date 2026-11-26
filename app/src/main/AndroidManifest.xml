@@ -36,6 +36,17 @@
                     android:scheme="meld"
                     android:host="r" />
             </intent-filter>
+            <!-- Android App Links: https://<your PWA host>/r/CODE opens the app when installed,
+                 otherwise the web app. Host comes from meld.webBaseUrl / MELD_WEB_BASE_URL. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="${meldWebHost}"
+                    android:pathPrefix="/r/" />
+            </intent-filter>
         </activity>
 
         <provider

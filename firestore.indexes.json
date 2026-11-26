@@ -1,0 +1,10 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "audio",
+      "fieldPath": "dataBase64",
+      "indexes": []
+    }
+  ]
+}

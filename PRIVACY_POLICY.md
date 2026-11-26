@@ -2,37 +2,58 @@
 
 **Effective Date:** November 26, 2026
 
-Meld is designed around privacy by default. You do not need an account, email address, phone number, or password to create, share, or vote in decision rooms.
+Meld is designed around privacy by default. You don't need an account, email address, phone number or password to create, share or vote in decision rooms.
 
-## 1. Information Stored Locally on Your Device
+## 1. What is stored on your device
 
-Meld stores your app state locally on your device using Android Room and Jetpack DataStore:
+The Android app keeps your data in local storage (Room and DataStore). The web app keeps it in your browser (IndexedDB and localStorage). This includes:
 
-- **Anonymous Device Identifier (`uid`)**: A randomly generated UUID created locally so Meld can track your votes and let you edit or delete your own voice opinions.
-- **Display Profile & Avatar Preferences**: Your chosen display name, anonymous mask alias, Bauhaus avatar configuration, language preference, theme choice, and haptics toggle.
-- **Decision Rooms, Votes & Voice Notes**: Rooms you create or join, poll options, vote selections, and local `.m4a` voice recordings saved in your app's private storage directory.
+- **A random device identifier**, generated locally, so your votes and opinions can be told apart from other people's.
+- **Your display profile:** display name (optional), anonymous mask name, avatar and colour, language, theme and haptics preferences.
+- **Rooms you created or opened**, their options, votes and opinions, and voice-note recordings (`.m4a` files in the app's private storage).
 
-## 2. Anonymous Rooms & Anti-Spam Network Hashing
+## 2. What is shared through Meld's cloud service
 
-In rooms with Anonymous Mode enabled, Meld prevents duplicate ballot stuffing using a salted one-way SHA-256 hash of your network identifier combined with the room code. Raw IP addresses are **never** stored in the database or shared with other participants; only a masked label (e.g., `192.168.x.42`) is shown locally.
+To let other people vote in your rooms, Meld uses Google Firebase (Cloud Firestore and Firebase Anonymous Authentication).
 
-## 3. Optional Permissions
+When you create, join or vote in a room, the following is stored on Firebase servers and is visible to **anyone who has the room's code or link**:
 
-Meld only requests Android runtime permissions when you actively use the corresponding feature:
+- **The room:** question, options, settings and deadline.
+- **Your ballot:** the options you chose, your display name or (in anonymous rooms) your mask name, and your avatar colour.
+- **Opinions you post:** text, and voice-note audio if you record one.
 
-- **Microphone (`RECORD_AUDIO`)**: Used solely to record inline voice opinions inside a decision room. Audio is recorded locally using Android `MediaRecorder` without sending audio to third-party speech servers.
-- **Calendar (`READ_CALENDAR`)**: Used solely when you tap Calendar Sync to suggest free time blocks or detect scheduling conflicts locally. Calendar event titles are not uploaded.
-- **Notifications (`POST_NOTIFICATIONS`)**: Used to alert you when a timed poll deadline expires or reaches consensus.
+Firebase Anonymous Authentication gives each device a random id. It isn't linked to your name, email or phone number. Meld uses it only to enforce rules such as "one ballot per device" and "only the creator can close the room".
 
-## 4. No Ads, No Analytics, No Cloud Backup
+Rooms can't be listed or searched: only people you share the code with can open them.
 
-- Meld contains **no third-party advertising SDKs**, **no behavioral tracking**, and **no analytics**.
-- Android Auto Backup and device-to-device cloud transfer are explicitly disabled (`android:allowBackup="false"`) so your local databases and identity tokens never leave your device unexpectedly.
+Firebase processes this data on Google's infrastructure. See [Google's Firebase privacy information](https://firebase.google.com/support/privacy).
 
-## 5. Deleting Your Data
+If you never create or join a shared room, or you use a build without cloud configuration, nothing leaves your device.
 
-You can delete any room or voice opinion directly inside the app (which also deletes associated local `.m4a` audio files), or clear all local data at any time via **Android Settings > Apps > Meld > Storage > Clear data**.
+## 3. Anonymous rooms
 
-## 6. Contact & Issues
+In rooms with Anonymous Mode on, other participants see your mask name instead of your display name. Ballots are tied only to the random device id, so the service can stop duplicate ballots.
 
-If you have privacy questions or feedback, please open an issue on the [Meld GitHub Repository](https://github.com/PrinceJoseph-software/meld/issues).
+## 4. Optional permissions (Android)
+
+Meld only asks for permissions when you use the matching feature:
+
+- **Microphone (`RECORD_AUDIO`):** to record voice opinions. Audio is recorded on your device. It is uploaded only when you post it to a shared room.
+- **Calendar (`READ_CALENDAR`):** to suggest free time slots and detect scheduling conflicts. Calendar events are read on your device and **never uploaded**.
+- **Notifications (`POST_NOTIFICATIONS`):** requested when you set a poll deadline, so Meld can alert you when it's about to close and when a decision is reached.
+
+## 5. No ads, no analytics, no tracking
+
+Meld contains **no advertising SDKs**, **no analytics** and **no behavioural tracking**. Android Auto Backup is disabled, so your local data isn't copied to cloud backups.
+
+## 6. Deleting your data
+
+- **Deleting a room from your history** removes it from your device, together with its voice-note files.
+- **Deleting an opinion you posted** removes it, and its audio, from your device and from the cloud.
+- **Room creators** can delete any opinion in their room and reset all votes.
+- To remove everything stored locally, use **Android Settings → Apps → Meld → Storage → Clear data**, or clear site data in your browser.
+- To have shared room data deleted from the cloud, open an issue on the repository with the room code.
+
+## 7. Contact
+
+For privacy questions, open an issue on the [Meld GitHub repository](https://github.com/PrinceJoseph-software/meld/issues).

@@ -132,7 +132,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleDeepLink(intent: Intent?) {
         val data = intent?.data ?: return
-        if (data.scheme == "meld" && data.host == "r") {
+        val isCustomScheme = data.scheme == "meld" && data.host == "r"
+        val isAppLink = data.scheme == "https" && data.pathSegments.firstOrNull() == "r"
+        if (isCustomScheme || isAppLink) {
             val roomId = io.github.princejoseph.meld.data.sanitizeRoomCode(data.lastPathSegment) ?: return
             viewModel.openRoom(roomId)
         }
@@ -266,6 +268,7 @@ private fun MeldAppShell(
                             onQuestionChange = viewModel::updateQuestion,
                             onQuestionVoiceChange = viewModel::setQuestionVoice,
                             onOptionChange = viewModel::updateOption,
+                            onOptionTimePicked = viewModel::setOptionTimeSlot,
                             onAddOptionAfter = viewModel::addOptionAfter,
                             onConsumeOptionFocus = viewModel::consumeNewlyAddedOptionFocus,
                             onRemoveOption = viewModel::removeOption,

@@ -1,12 +1,14 @@
 ﻿package io.github.princejoseph.meld.ui
 
 import android.app.Application
+import io.github.princejoseph.meld.R
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.princejoseph.meld.data.ConnectivityObserver
 import io.github.princejoseph.meld.data.DeviceCalendarReader
 import io.github.princejoseph.meld.data.FreeSlotCalculator
+import io.github.princejoseph.meld.data.NewOptionSpec
 import io.github.princejoseph.meld.data.IcsCalendarParser
 import io.github.princejoseph.meld.data.IdentityStore
 import io.github.princejoseph.meld.data.MeldDatabase
@@ -26,6 +28,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -36,7 +40,10 @@ import java.util.UUID
 
 data class DraftOption(
     val id: String = UUID.randomUUID().toString(),
-    val text: String = ""
+    val text: String = "",
+    /** Set when the option came from the time picker or calendar; cleared if the text is edited. */
+    val slotStartMs: Long? = null,
+    val slotEndMs: Long? = null
 )
 
 data class CreateRoomUiState(
@@ -105,6 +112,20 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
                     repository.flushPendingVotes()
                 }
             }
+        }
+
+        // Cloud: push anything created offline whenever we (re)gain connectivity.
+        viewModelScope.launch {
+            repository.isOnlineFlow.distinctUntilChanged().collectLatest { online ->
+                if (online) runCatching { repository.resyncLocalState() }
+            }
+        }
+
+        // Cloud: live-mirror the open room's server state (votes from other people) into Room.
+        viewModelScope.launch {
+            _activeRoomId.flatMapLatest { id ->
+                if (id == null) emptyFlow() else repository.mirrorRemoteRoom(id)
+            }.collect { }
         }
 
         // Auto-close any unlocked poll whose deadline has expired
@@ -287,7 +308,23 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
         _createState.update { state ->
             state.copy(
                 options = state.options.map { opt ->
-                    if (opt.id == id) opt.copy(text = text) else opt
+                    if (opt.id == id) opt.copy(text = text, slotStartMs = null, slotEndMs = null) else opt
+                },
+                validationMessage = null
+            )
+        }
+    }
+
+    /** Time picker result: keeps the exact timestamp so slots work in every locale. */
+    fun setOptionTimeSlot(id: String, label: String, startMs: Long) {
+        _createState.update { state ->
+            state.copy(
+                options = state.options.map { opt ->
+                    if (opt.id == id) {
+                        opt.copy(text = label, slotStartMs = startMs, slotEndMs = startMs + 60L * 60L * 1000L)
+                    } else {
+                        opt
+                    }
                 },
                 validationMessage = null
             )
@@ -423,14 +460,15 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
 
     fun applySelectedCalendarSlots() {
         val syncState = _calendarSyncState.value
-        val pickedLabels = syncState.suggestedSlots
+        val picked = syncState.suggestedSlots
             .filter { syncState.selectedSlotIds.contains(it.id) }
-            .map { it.label }
-        if (pickedLabels.isEmpty()) return
+        if (picked.isEmpty()) return
 
         _createState.update { state ->
             val existingNonEmpty = state.options.filter { it.text.isNotBlank() }
-            val merged = (existingNonEmpty + pickedLabels.map { DraftOption(text = it) })
+            val merged = (existingNonEmpty + picked.map {
+                DraftOption(text = it.label, slotStartMs = it.startMs, slotEndMs = it.endMs)
+            })
                 .distinctBy { it.text }
                 .take(12)
             val padded = if (merged.size < 2) {
@@ -459,7 +497,8 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
 
     fun createRoom(
         emptyQuestionError: String,
-        minOptionsError: String
+        minOptionsError: String,
+        createFailedMessage: String = "Couldn't create the room. Please try again."
     ) {
         val snapshot = _createState.value
         if (snapshot.isCreating) return
@@ -472,7 +511,9 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
         }
         val question = typedQuestion.ifEmpty { "Voice Question" }
 
-        val filledOptions = snapshot.options.map { it.text.trim() }.filter { it.isNotEmpty() }
+        val filledOptions = snapshot.options
+            .filter { it.text.isNotBlank() }
+            .map { NewOptionSpec(it.text.trim(), it.slotStartMs, it.slotEndMs) }
         if (filledOptions.size < 2) {
             _createState.update { it.copy(validationMessage = minOptionsError) }
             return
@@ -480,10 +521,11 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
 
         _createState.update { it.copy(isCreating = true, validationMessage = null) }
         viewModelScope.launch {
+          try {
             val roomId = repository.createRoom(
                 question = question,
                 mode = snapshot.mode,
-                optionLabels = filledOptions,
+                options = filledOptions,
                 allowMultiple = snapshot.allowMultiple,
                 allowFriendsToAdd = snapshot.allowFriendsToAdd,
                 isAnonymous = snapshot.isAnonymous,
@@ -503,6 +545,11 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
             _activeRoomId.value = roomId
             _logoPulseCount.update { it + 1 }
             _createState.value = CreateRoomUiState(mode = snapshot.mode)
+          } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            // Never leave the Create button stuck in its busy state.
+            _createState.update { it.copy(isCreating = false, validationMessage = createFailedMessage) }
+          }
         }
     }
 
@@ -510,7 +557,8 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
         val cleaned = rawCode.trim().removePrefix("#").uppercase()
         if (cleaned.isEmpty()) return
         viewModelScope.launch {
-            if (repository.roomExists(cleaned)) {
+            _createState.update { it.copy(joinCodeError = null) }
+            if (repository.roomExists(cleaned) || repository.fetchRemoteRoom(cleaned)) {
                 _createState.update { it.copy(joinCodeError = null) }
                 _activeRoomId.value = cleaned
             } else {
@@ -523,8 +571,18 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
         _createState.update { it.copy(joinCodeError = null) }
     }
 
+    /** Opens a room from history, a notification, a widget or a deep/App Link. */
     fun openRoom(roomId: String) {
-        _activeRoomId.value = roomId.uppercase()
+        val code = roomId.uppercase()
+        viewModelScope.launch {
+            // A link from someone else: fetch the room first so the screen has data to show.
+            if (repository.roomExists(code) || repository.fetchRemoteRoom(code)) {
+                _activeRoomId.value = code
+            } else {
+                val message = getApplication<Application>().getString(R.string.error_room_unavailable, code)
+                _createState.update { it.copy(joinCodeError = message) }
+            }
+        }
     }
 
     fun closeRoom() {

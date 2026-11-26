@@ -1,4 +1,11 @@
 ﻿import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import java.util.Properties
+
+fun localProp(key: String): String? {
+  val f = rootProject.file("local.properties")
+  if (!f.exists()) return null
+  return Properties().apply { f.inputStream().use { load(it) } }.getProperty(key)
+}
 
 plugins {
   alias(libs.plugins.android.application)
@@ -15,10 +22,22 @@ android {
     applicationId = "io.github.princejoseph.meld"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    // CI passes these from the release tag (v1.2.3 -> versionName 1.2.3, versionCode = run number).
+    versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
+    versionName = System.getenv("VERSION_NAME") ?: "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+    // Public web app (PWA) origin used for share links, QR codes and Android App Links,
+    // e.g. https://meld.example.com. Set MELD_WEB_BASE_URL (CI) or meld.webBaseUrl in
+    // gradle.properties / local.properties. Empty = share the meld:// link only.
+    val webBaseUrl = (System.getenv("MELD_WEB_BASE_URL")
+      ?: (project.findProperty("meld.webBaseUrl") as String?)
+      ?: localProp("meld.webBaseUrl")
+      ?: "").trim().trimEnd('/')
+    buildConfigField("String", "WEB_BASE_URL", "\"$webBaseUrl\"")
+    manifestPlaceholders["meldWebHost"] =
+      webBaseUrl.removePrefix("https://").substringBefore('/').ifEmpty { "meld.invalid" }
   }
 
   signingConfigs {
@@ -26,7 +45,7 @@ android {
       val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
       storeFile = file(keystorePath)
       storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
+      keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
       keyPassword = System.getenv("KEY_PASSWORD")
     }
     create("debugConfig") {
@@ -57,6 +76,8 @@ android {
     buildConfig = true
   }
   testOptions { unitTests { isIncludeAndroidResources = true } }
+  // Robolectric reads assets from the debug variant; schemas are needed by MigrationTestHelper.
+  sourceSets { getByName("debug").assets.directories.add("$projectDir/schemas") }
   dependenciesInfo {
     includeInApk = false
     includeInBundle = true
@@ -65,11 +86,17 @@ android {
 
 googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.WARN }
 
+// Room schema history: committed under app/schemas so migrations can be verified in tests.
+ksp { arg("room.schemaLocation", "$projectDir/schemas") }
+
 // Some unused dependencies are commented out below instead of being removed.
 // This makes it easy to add them back in the future if needed.
 dependencies {
   implementation(platform(libs.androidx.compose.bom))
-  // implementation(platform(libs.firebase.bom))
+  implementation(platform(libs.firebase.bom))
+  implementation(libs.firebase.firestore)
+  implementation(libs.firebase.auth)
+  implementation(libs.kotlinx.coroutines.play.services)
   // implementation(libs.accompanist.permissions)
   implementation(libs.androidx.activity.compose)
   // implementation(libs.androidx.camera.camera2)
@@ -94,12 +121,8 @@ dependencies {
   // implementation(libs.coil.compose)
   // implementation(libs.converter.moshi)
   // implementation(libs.firebase.ai)
-  // Uncomment to use Firestore:
-  // implementation(libs.firebase.firestore)
 
-  // Uncomment ALL FOUR of the following dependencies together to use Firebase Auth and Google
-  // Sign-In via Credential Manager:
-  // implementation(libs.firebase.auth)
+  // Optional Google Sign-In via Credential Manager (not needed: Meld uses anonymous auth):
   // implementation(libs.androidx.credentials)
   // implementation(libs.androidx.credentials.play.services)
   // implementation(libs.googleid)
@@ -122,6 +145,7 @@ dependencies {
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.robolectric)
+  testImplementation(libs.androidx.room.testing)
   androidTestImplementation(platform(libs.androidx.compose.bom))
   androidTestImplementation(libs.androidx.compose.ui.test.junit4)
   androidTestImplementation(libs.androidx.espresso.core)

@@ -134,7 +134,7 @@ fun VoiceCommentsSection(
             newRecorder.setAudioSource(MediaRecorder.AudioSource.MIC)
             newRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             newRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            newRecorder.setAudioEncodingBitRate(64_000)
+            newRecorder.setAudioEncodingBitRate(32_000)
             newRecorder.setAudioSamplingRate(16_000)
             newRecorder.setOutputFile(outFile.absolutePath)
             newRecorder.prepare()

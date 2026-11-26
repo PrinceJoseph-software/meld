@@ -11,7 +11,6 @@ import io.github.princejoseph.meld.data.IdentityStore
 import io.github.princejoseph.meld.data.MeldDatabase
 import io.github.princejoseph.meld.data.MeldRepository
 import io.github.princejoseph.meld.data.sanitizeRoomCode
-import io.github.princejoseph.meld.widget.MeldWidgetUpdater
 import java.util.concurrent.TimeUnit
 
 object DeadlineWorkScheduler {
@@ -119,22 +118,9 @@ class DeadlineExpirationWorker(
             ?: return Result.failure()
         val dao = MeldDatabase.getInstance(applicationContext).meldDao()
         val repo = MeldRepository(dao, IdentityStore(applicationContext), appContext = applicationContext)
-        val newlyFinalized = repo.finalizeExpiredRoomIfNeeded(roomId)
-        if (!newlyFinalized) return Result.success()
-
-        val room = dao.getRoomOnce(roomId) ?: return Result.success()
-        val options = dao.getOptionsOnce(roomId)
-        val votes = dao.getVotesOnce(roomId)
-        val winnerLabel = options.firstOrNull { it.id == room.winnerOptionId }?.label
-
-        MeldNotificationManager.showDecisionReached(
-            context = applicationContext,
-            roomId = roomId,
-            question = room.question,
-            winnerLabel = winnerLabel,
-            voteCount = votes.size
-        )
-        MeldWidgetUpdater.refreshAll(applicationContext)
+        // finalizeExpiredRoomIfNeeded already posts the "decision reached" notification
+        // and refreshes widgets; posting again here produced a duplicate alert.
+        repo.finalizeExpiredRoomIfNeeded(roomId)
         return Result.success()
     }
 }

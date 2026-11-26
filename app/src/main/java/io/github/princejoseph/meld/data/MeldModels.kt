@@ -129,8 +129,19 @@ data class OptionUiModel(
     val hasPriorityConflict: Boolean = false,
     val conflictHint: String? = null,
     val isDeclinedByMe: Boolean = false,
-    val declinedCount: Int = 0
-)
+    val declinedCount: Int = 0,
+    val slotStartMs: Long? = null,
+    val slotEndMs: Long? = null
+) {
+    /**
+     * The option's time window. Uses the stored timestamps when present (locale-independent);
+     * falls back to parsing the label only for rooms created before schema v7.
+     */
+    fun slotWindowMs(referenceNowMs: Long = System.currentTimeMillis()): Pair<Long, Long>? {
+        val start = slotStartMs ?: return ConsensusInsightCalculator.parseSlotWindowMs(label, referenceNowMs)
+        return start to (slotEndMs ?: (start + 60L * 60L * 1000L))
+    }
+}
 
 data class RoomDetailsUiModel(
     val id: String,
@@ -160,7 +171,10 @@ data class RoomDetailsUiModel(
     val voiceComments: List<VoiceCommentUiModel> = emptyList()
 ) {
     val shareUrl: String
-        get() = "https://meld.app/r/$id"
+        get() = io.github.princejoseph.meld.BuildConfig.WEB_BASE_URL
+            .takeIf { it.isNotBlank() }
+            ?.let { "$it/r/$id" }
+            ?: "meld://r/$id"
 
     val deepLinkUri: String
         get() = "meld://r/$id"
@@ -244,7 +258,7 @@ object ConsensusInsightCalculator {
 
         if (mode == RoomMode.TIME_SLOTS && options.size >= 2) {
             val parsedSlots = options.mapNotNull { opt ->
-                parseSlotWindowMs(opt.label)?.let { (startMs, endMs) ->
+                opt.slotWindowMs()?.let { (startMs, endMs) ->
                     Triple(opt, startMs, endMs)
                 }
             }
@@ -336,12 +350,15 @@ object ConsensusInsightCalculator {
             "EEE, h:mm a" to false,
             "EEE h:mm a" to false
         )
+        val locales = listOf(java.util.Locale.US, java.util.Locale.getDefault()).distinct()
         for ((pattern, hasMonth) in normalizedPatterns) {
-            val parsed = runCatching {
-                val sdf = java.text.SimpleDateFormat(pattern, java.util.Locale.US)
-                sdf.isLenient = true
-                sdf.parse(cleaned)
-            }.getOrNull()
+            val parsed = locales.firstNotNullOfOrNull { locale ->
+                runCatching {
+                    val sdf = java.text.SimpleDateFormat(pattern, locale)
+                    sdf.isLenient = true
+                    sdf.parse(cleaned)
+                }.getOrNull()
+            }
             if (parsed != null) {
                 val parsedCal = java.util.Calendar.getInstance().apply { time = parsed }
                 val normalized = java.util.Calendar.getInstance().apply {
@@ -388,6 +405,13 @@ object ConsensusInsightCalculator {
         return "${dayTime.format(java.util.Date(startMs))} – ${endTime.format(java.util.Date(endMs))}"
     }
 }
+
+/** An option to create. Time-slot options carry their window; the label is for display only. */
+data class NewOptionSpec(
+    val label: String,
+    val slotStartMs: Long? = null,
+    val slotEndMs: Long? = null
+)
 
 data class ParticipantCommitment(
     val participantUid: String,
@@ -442,7 +466,7 @@ object ConflictDetector {
         val optionHints = mutableMapOf<String, String>()
 
         for (opt in options) {
-            val window = ConsensusInsightCalculator.parseSlotWindowMs(opt.label, referenceNowMs) ?: continue
+            val window = opt.slotWindowMs(referenceNowMs) ?: continue
             val (slotStart, slotEnd) = window
 
             val overlappingPerUid = mutableMapOf<String, ParticipantCommitment>()
