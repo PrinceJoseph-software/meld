@@ -13,12 +13,14 @@ rooms/{CODE}                      CODE = 4–10 chars [A-Z0-9]; "knowing the cod
   deadlineEpochMs|null, ownerUid, winnerOptionId|null, isLocked,
   createdAtEpochMs, expiresAtEpochMs, updatedAtEpochMs, schemaVersion
 
+  isRanked, repeatWeekly, seriesId|null, nextRoomCode|null (server), notifiedAt|null (server), source
+
 rooms/{CODE}/options/{optionId}
   label, sortOrder, slotStartMs|null, slotEndMs|null, createdByUid
 
 rooms/{CODE}/ballots/{authUid}    exactly one ballot per device
   voterUid (app-level id), voterName, badgeColorIndex, avatarStyleIndex,
-  optionIds[] (1 in single-choice rooms), updatedAtEpochMs
+  optionIds[] (1 in single-choice rooms; the voter's ranking, best first, in ranked rooms), updatedAtEpochMs
 
 rooms/{CODE}/comments/{id}        typed or voice opinions
   authorAuthUid, voterUid, voterName, badgeColorIndex, avatarStyleIndex, optionId|null,
@@ -26,7 +28,22 @@ rooms/{CODE}/comments/{id}        typed or voice opinions
 
 rooms/{CODE}/audio/{id}           voice-note bytes, fetched only when played
   authorAuthUid, mimeType, dataBase64 (≤ 700,000 chars ≈ 60 s at 32 kbps)
+
+rooms/{CODE}/private/config       owner-only: webhookUrl (https), webhookSecret
+rooms/{CODE}/private/notify       server-only: Slack/Discord channel to announce the result in
+rooms/{CODE}/private/claim        server-only: hash of the one-time "manage" link for bot rooms
+
+series/{SERIES_ID}                weekly recurring poll (SERIES_ID = first room's code)
+  ownerUid, latestCode, active, intervalDays (7), nextRunAt, createdAtEpochMs
 ```
+
+## Tallying (identical everywhere)
+
+- **Normal rooms:** most votes wins; on a tie, the option listed first wins.
+- **Ranked rooms: instant runoff.** In each round, every ballot counts for its highest-ranked option still in the race. An option with more than half of the active ballots wins. Otherwise the weakest option is eliminated and its ballots move to their next choice.
+  - Ties for elimination: the option with the lower Borda score goes first; if still tied, the option listed later.
+  - A final two-way tie is decided by the same rule and flagged as `tie`.
+- Implemented in `web/src/shared/tally.ts` (web + server) and `data/RankedChoice.kt` (Android). Both have the same test cases, so all platforms always agree on the winner.
 
 ## What the server enforces (`firestore.rules`)
 
