@@ -293,4 +293,5 @@
     <!-- Error / Empty -->
     <string name="error_empty_question">Enter a question to start</string>
     <string name="error_min_options">Add at least 2 options</string>
+    <string name="error_room_unavailable">Room %1$s isn\'t available. Check the code or your internet connection.</string>
 </resources>

@@ -132,7 +132,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleDeepLink(intent: Intent?) {
         val data = intent?.data ?: return
-        if (data.scheme == "meld" && data.host == "r") {
+        val isCustomScheme = data.scheme == "meld" && data.host == "r"
+        val isAppLink = data.scheme == "https" && data.pathSegments.firstOrNull() == "r"
+        if (isCustomScheme || isAppLink) {
             val roomId = io.github.princejoseph.meld.data.sanitizeRoomCode(data.lastPathSegment) ?: return
             viewModel.openRoom(roomId)
         }

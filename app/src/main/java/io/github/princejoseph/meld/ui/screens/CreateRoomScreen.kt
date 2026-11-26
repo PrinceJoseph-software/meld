@@ -281,7 +281,7 @@ fun CreateRoomScreen(
                         rec.setAudioSource(MediaRecorder.AudioSource.MIC)
                         rec.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
                         rec.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                        rec.setAudioEncodingBitRate(64_000)
+                        rec.setAudioEncodingBitRate(32_000)
                         rec.setAudioSamplingRate(16_000)
                         rec.setOutputFile(outFile.absolutePath)
                         rec.prepare()

@@ -5,7 +5,13 @@ import io.github.princejoseph.meld.notifications.DeadlineWorkScheduler
 import io.github.princejoseph.meld.notifications.MeldNotificationManager
 import io.github.princejoseph.meld.ui.theme.VoterBadgeColors
 import io.github.princejoseph.meld.widget.MeldWidgetUpdater
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,6 +33,24 @@ class MeldRepository(
 ) {
     private val secureRandom = SecureRandom()
     private val syncMutex = Mutex()
+
+    /** Cloud pushes run here so local actions never wait on the network. */
+    private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /** True when a cloud backend is configured; false = local-only build. */
+    val isCloudEnabled: Boolean get() = remoteSync.isEnabled
+
+    private fun launchSync(block: suspend () -> Unit) {
+        if (!remoteSync.isEnabled) return
+        syncScope.launch { runCatching { block() } }
+    }
+
+    /** Creator rights: the local creator token (offline-created rooms) or the server owner uid. */
+    private suspend fun isOwner(room: RoomEntity): Boolean {
+        if (identityStore.hasValidCreatorToken(room.id, room.creatorToken)) return true
+        val auth = remoteSync.authUid.value ?: return false
+        return room.ownerUid != null && room.ownerUid == auth
+    }
 
     val identityFlow: Flow<VoterIdentity> = identityStore.identityFlow
     val darkThemeOverrideFlow: Flow<Boolean?> = identityStore.darkThemeOverrideFlow
@@ -170,9 +194,10 @@ class MeldRepository(
             _highPriorityByRoom,
             _commitmentsByUid,
             _declinedByRoom,
-            _anonymousLockAlertByRoom
-        ) { p, c, d, a ->
-            RoomObserveExtras(p, c, d, a)
+            _anonymousLockAlertByRoom,
+            remoteSync.authUid
+        ) { p, c, d, a, authUid ->
+            RoomObserveExtras(p, c, d, a, authUid)
         }
         return combine(
             dao.observeRoom(roomId),
@@ -195,7 +220,10 @@ class MeldRepository(
             val voiceComments = args[5] as List<VoiceCommentEntity>
             val extra = args[6] as RoomObserveExtras
 
-            val isCreator = creatorIds.contains(roomId)
+            // Local creator token must exist on this row (rooms fetched from the server carry
+            // none), or this device's server identity must own the room.
+            val isCreator = (creatorIds.contains(roomId) && roomData.room.creatorToken.isNotBlank()) ||
+                (extra.authUid != null && roomData.room.ownerUid == extra.authUid)
             val defaultPriority = if (isCreator && roomData.room.mode == RoomMode.TIME_SLOTS.name) {
                 setOf(identity.uid)
             } else {
@@ -287,7 +315,11 @@ class MeldRepository(
 
         dao.createRoomWithOptions(room, optionEntities)
         identityStore.saveCreatorToken(roomId, creatorToken)
-        remoteSync.pushRoom(room, optionEntities)
+        launchSync {
+            val uid = remoteSync.ensureSignedIn() ?: return@launchSync
+            dao.setRoomOwnerUid(roomId, uid)
+            remoteSync.pushRoom(room.copy(ownerUid = uid), optionEntities)
+        }
         if (mode == RoomMode.TIME_SLOTS) {
             _highPriorityByRoom.update { it + (roomId to setOf(creatorIdentity.uid)) }
         }
@@ -562,10 +594,8 @@ class MeldRepository(
         if (allowMultiple) {
             if (isRemoval) {
                 dao.deleteVote(roomId, optionId, voterUid)
-                remoteSync.removeVote(roomId, optionId, voterUid)
             } else {
                 dao.insertVote(vote)
-                remoteSync.pushVote(vote, allowMultiple = true)
             }
         } else {
             dao.toggleSingleChoiceVote(
@@ -575,11 +605,36 @@ class MeldRepository(
                 alreadySelected = isRemoval,
                 newVote = vote
             )
-            if (isRemoval) {
-                remoteSync.removeVote(roomId, optionId, voterUid)
-            } else {
-                remoteSync.pushVote(vote, allowMultiple = false)
-            }
+        }
+        syncMyBallot(roomId, voterUid)
+    }
+
+    /** Pushes this device's complete ballot for a room (one server document per voter). */
+    private fun syncMyBallot(roomId: String, voterUid: String) {
+        launchSync {
+            val mine = dao.getVotesByVoterOnce(roomId, voterUid)
+            val first = mine.maxByOrNull { it.votedAtEpochMs }
+            val identity = identityStore.ensureIdentity()
+            val room = dao.getRoomOnce(roomId) ?: return@launchSync
+            remoteSync.pushBallot(
+                roomId,
+                RemoteBallot(
+                    voterUid = voterUid,
+                    voterName = first?.voterName
+                        ?: if (room.isAnonymous) identity.effectiveAnonymousName else identity.effectiveName,
+                    badgeColorIndex = first?.voterBadgeColorIndex ?: identity.badgeColorIndex,
+                    avatarStyleIndex = first?.voterAvatarStyleIndex ?: identity.avatarStyleIndex,
+                    optionIds = mine.map { it.optionId }.distinct(),
+                    updatedAtEpochMs = System.currentTimeMillis()
+                )
+            )
+        }
+    }
+
+    private fun syncRoomState(roomId: String) {
+        launchSync {
+            val room = dao.getRoomOnce(roomId) ?: return@launchSync
+            if (isOwner(room)) remoteSync.pushRoomState(room)
         }
     }
 
@@ -589,25 +644,25 @@ class MeldRepository(
         val room = dao.getRoomOnce(roomId) ?: return
         val timerExpired = room.deadlineEpochMs != null && System.currentTimeMillis() >= room.deadlineEpochMs
         if (room.isLocked || timerExpired) return
-        val isCreator = identityStore.hasValidCreatorToken(roomId, room.creatorToken)
+        val isCreator = isOwner(room)
         if (!room.allowFriendsToAdd && !isCreator) return
 
         val existing = dao.getOptionsOnce(roomId)
         if (existing.size >= 20) return
         val nextSort = (existing.maxOfOrNull { it.sortOrder } ?: -1) + 1
-        dao.insertOption(
-            OptionEntity(
-                id = "${roomId}_opt_${UUID.randomUUID().toString().take(8)}",
-                roomId = roomId,
-                label = cleaned,
-                sortOrder = nextSort
-            )
+        val option = OptionEntity(
+            id = "${roomId}_opt_${UUID.randomUUID().toString().take(8)}",
+            roomId = roomId,
+            label = cleaned,
+            sortOrder = nextSort
         )
+        dao.insertOption(option)
+        launchSync { remoteSync.pushOption(option) }
     }
 
     suspend fun crownWinner(roomId: String, explicitOptionId: String? = null) {
         val room = dao.getRoomOnce(roomId) ?: return
-        if (!identityStore.hasValidCreatorToken(roomId, room.creatorToken)) return
+        if (!isOwner(room)) return
 
         val options = dao.getOptionsOnce(roomId)
         if (options.isEmpty()) return
@@ -623,6 +678,7 @@ class MeldRepository(
 
         dao.clearPendingVotesForRoom(roomId)
         dao.updateRoomLock(roomId = roomId, isLocked = true, winnerOptionId = winnerId)
+        syncRoomState(roomId)
         appContext?.let {
             DeadlineWorkScheduler.cancelForRoom(it, roomId)
             val winnerLabel = options.firstOrNull { opt -> opt.id == winnerId }?.label
@@ -663,6 +719,7 @@ class MeldRepository(
 
         dao.clearPendingVotesForRoom(roomId)
         dao.updateRoomLock(roomId = roomId, isLocked = true, winnerOptionId = winnerId)
+        syncRoomState(roomId)
         appContext?.let {
             DeadlineWorkScheduler.cancelForRoom(it, roomId)
             val winnerLabel = options.firstOrNull { opt -> opt.id == winnerId }?.label
@@ -680,7 +737,7 @@ class MeldRepository(
 
     suspend fun reopenRoom(roomId: String) {
         val room = dao.getRoomOnce(roomId) ?: return
-        if (!identityStore.hasValidCreatorToken(roomId, room.creatorToken)) return
+        if (!isOwner(room)) return
         val now = System.currentTimeMillis()
         val nextDeadline = room.deadlineEpochMs?.takeIf { it > now }
         dao.updateRoomDeadlineAndLock(
@@ -689,6 +746,7 @@ class MeldRepository(
             winnerOptionId = null,
             deadlineEpochMs = nextDeadline
         )
+        syncRoomState(roomId)
         if (nextDeadline != null) {
             appContext?.let { DeadlineWorkScheduler.scheduleForRoom(it, roomId, room.createdAtEpochMs, nextDeadline) }
         }
@@ -697,14 +755,16 @@ class MeldRepository(
 
     suspend fun resetVotes(roomId: String) {
         val room = dao.getRoomOnce(roomId) ?: return
-        if (!identityStore.hasValidCreatorToken(roomId, room.creatorToken)) return
+        if (!isOwner(room)) return
         dao.clearPendingVotesForRoom(roomId)
         dao.clearRoomVotes(roomId)
         dao.clearAnonymousLocksForRoom(roomId)
+        launchSync { remoteSync.clearBallots(roomId) }
         _declinedByRoom.update { it - roomId }
         _anonymousLockAlertByRoom.update { it - roomId }
         if (room.isLocked) {
             dao.updateRoomLock(roomId = roomId, isLocked = false, winnerOptionId = null)
+            syncRoomState(roomId)
         }
         appContext?.let { MeldWidgetUpdater.refreshAllAsync(it) }
     }
@@ -1140,7 +1200,7 @@ class MeldRepository(
             audioFilePath = audioFilePath
         )
         dao.insertVoiceComment(comment)
-        remoteSync.pushVoiceComment(comment)
+        launchSync { pushComment(comment) }
     }
 
     suspend fun deleteVoiceComment(commentId: String) {
@@ -1151,7 +1211,111 @@ class MeldRepository(
             runCatching { java.io.File(path).delete() }
         }
         dao.deleteVoiceComment(commentId)
-        remoteSync.deleteVoiceComment(existing.roomId, commentId)
+        launchSync { remoteSync.deleteVoiceComment(existing.roomId, commentId) }
+    }
+
+    // ---- Cloud sync ----------------------------------------------------------------------
+
+    private suspend fun pushComment(comment: VoiceCommentEntity) {
+        val audio = comment.audioFilePath?.let { path ->
+            runCatching { java.io.File(path).takeIf { it.length() in 1..MAX_AUDIO_BYTES }?.readBytes() }.getOrNull()
+        }
+        remoteSync.pushVoiceComment(comment, audio, if (audio != null) "audio/mp4" else null)
+    }
+
+    /**
+     * Looks a room up on the server and stores it locally. Returns true when the room is now
+     * available on this device (already local, or fetched). Works offline for cached rooms.
+     */
+    suspend fun fetchRemoteRoom(roomId: String): Boolean {
+        val code = sanitizeRoomCode(roomId) ?: return false
+        if (!remoteSync.isEnabled) return dao.getRoomOnce(code) != null
+        val snapshot = remoteSync.fetchRoom(code) ?: return dao.getRoomOnce(code) != null
+        applyRemoteSnapshot(snapshot)
+        return true
+    }
+
+    /** Live mirror of one room's server state into the local DB while collected. */
+    fun mirrorRemoteRoom(roomId: String): Flow<Unit> =
+        remoteSync.observeRoom(roomId)
+            .map { applyRemoteSnapshot(it) }
+            .catch { /* stay on local data when the listener fails */ }
+
+    private suspend fun applyRemoteSnapshot(snapshot: RemoteRoomSnapshot) {
+        val identity = identityStore.ensureIdentity()
+        val before = dao.getRoomOnce(snapshot.room.id)
+        val votes = snapshot.ballots.flatMap { ballot ->
+            ballot.optionIds.map { optionId ->
+                VoteEntity(
+                    id = "${snapshot.room.id}:$optionId:${ballot.voterUid}",
+                    roomId = snapshot.room.id,
+                    optionId = optionId,
+                    voterUid = ballot.voterUid,
+                    voterName = ballot.voterName,
+                    voterBadgeColorIndex = ballot.badgeColorIndex.coerceIn(0, VoterBadgeColors.lastIndex),
+                    voterAvatarStyleIndex = ballot.avatarStyleIndex,
+                    votedAtEpochMs = ballot.updatedAtEpochMs
+                )
+            }
+        }
+        dao.applyRemoteRoom(
+            room = snapshot.room,
+            options = snapshot.options,
+            votes = votes,
+            comments = snapshot.comments.map { it.comment },
+            myUid = identity.uid
+        )
+        val deadline = snapshot.room.deadlineEpochMs
+        if (appContext != null && deadline != null && !snapshot.room.isLocked &&
+            deadline != before?.deadlineEpochMs
+        ) {
+            DeadlineWorkScheduler.scheduleForRoom(appContext, snapshot.room.id, snapshot.room.createdAtEpochMs, deadline)
+        }
+        // Download voice-note audio we don't have yet (lazily, off the UI path).
+        snapshot.comments.filter { it.hasAudio }.forEach { remote ->
+            launchSync { downloadAudioIfMissing(snapshot.room.id, remote.comment.id) }
+        }
+        appContext?.let { MeldWidgetUpdater.refreshAllAsync(it) }
+    }
+
+    private suspend fun downloadAudioIfMissing(roomId: String, commentId: String) {
+        val ctx = appContext ?: return
+        val existing = dao.getVoiceCommentByIdOnce(commentId) ?: return
+        if (existing.audioFilePath?.let { java.io.File(it).exists() } == true) return
+        val (bytes, mime) = remoteSync.fetchAudio(roomId, commentId) ?: return
+        val ext = when {
+            mime.contains("webm") -> "webm"
+            mime.contains("ogg") -> "ogg"
+            else -> "m4a"
+        }
+        val dir = java.io.File(ctx.filesDir, "voice_notes").apply { mkdirs() }
+        val file = java.io.File(dir, "remote_${commentId.filter { it.isLetterOrDigit() || it == '-' }}.$ext")
+        runCatching { file.writeBytes(bytes) }.onSuccess {
+            dao.setVoiceCommentAudioPath(commentId, file.absolutePath)
+        }
+    }
+
+    /**
+     * Pushes everything this device owns that the server may have missed (rooms created
+     * before sign-in, ballots, opinions). Idempotent; called whenever the app comes online.
+     */
+    suspend fun resyncLocalState() {
+        if (!remoteSync.isEnabled) return
+        val uid = remoteSync.ensureSignedIn() ?: return
+        val identity = identityStore.ensureIdentity()
+        dao.getRecentRoomsOnce().forEach { entry ->
+            val room = entry.room
+            if (identityStore.hasValidCreatorToken(room.id, room.creatorToken) &&
+                (room.ownerUid == null || room.ownerUid == uid)
+            ) {
+                if (room.ownerUid == null) dao.setRoomOwnerUid(room.id, uid)
+                remoteSync.pushRoom(room.copy(ownerUid = uid), entry.options)
+            }
+            if (entry.votes.any { it.voterUid == identity.uid }) syncMyBallot(room.id, identity.uid)
+            dao.getVoiceCommentsOnce(room.id)
+                .filter { it.voterUid == identity.uid }
+                .forEach { pushComment(it) }
+        }
     }
 
     private fun generateRoomCode(): String {
@@ -1161,6 +1325,11 @@ class MeldRepository(
                 append(alphabet[secureRandom.nextInt(alphabet.length)])
             }
         }
+    }
+
+    private companion object {
+        /** Keeps base64 audio under Firestore's 1 MiB document limit. */
+        const val MAX_AUDIO_BYTES = 500_000L
     }
 
     private data class FriendSpec(
@@ -1174,6 +1343,7 @@ class MeldRepository(
         val priorityMap: Map<String, Set<String>>,
         val commitments: Map<String, List<ParticipantCommitment>>,
         val declinedMap: Map<String, Map<String, Set<String>>>,
-        val alertMap: Map<String, String?>
+        val alertMap: Map<String, String?>,
+        val authUid: String?
     )
 }

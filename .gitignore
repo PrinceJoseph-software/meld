@@ -16,3 +16,14 @@
 local.properties
 .env
 debug.keystore
+
+# Node / web
+node_modules/
+dist/
+.vercel
+*.local
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+# Firebase config (add via CI secret)
+app/google-services.json

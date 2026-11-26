@@ -171,7 +171,10 @@ data class RoomDetailsUiModel(
     val voiceComments: List<VoiceCommentUiModel> = emptyList()
 ) {
     val shareUrl: String
-        get() = "https://meld.app/r/$id"
+        get() = io.github.princejoseph.meld.BuildConfig.WEB_BASE_URL
+            .takeIf { it.isNotBlank() }
+            ?.let { "$it/r/$id" }
+            ?: "meld://r/$id"
 
     val deepLinkUri: String
         get() = "meld://r/$id"

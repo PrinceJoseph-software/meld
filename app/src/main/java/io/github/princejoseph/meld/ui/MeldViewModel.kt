@@ -1,6 +1,7 @@
 ﻿package io.github.princejoseph.meld.ui
 
 import android.app.Application
+import io.github.princejoseph.meld.R
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -27,6 +28,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -109,6 +112,20 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
                     repository.flushPendingVotes()
                 }
             }
+        }
+
+        // Cloud: push anything created offline whenever we (re)gain connectivity.
+        viewModelScope.launch {
+            repository.isOnlineFlow.distinctUntilChanged().collectLatest { online ->
+                if (online) runCatching { repository.resyncLocalState() }
+            }
+        }
+
+        // Cloud: live-mirror the open room's server state (votes from other people) into Room.
+        viewModelScope.launch {
+            _activeRoomId.flatMapLatest { id ->
+                if (id == null) emptyFlow() else repository.mirrorRemoteRoom(id)
+            }.collect { }
         }
 
         // Auto-close any unlocked poll whose deadline has expired
@@ -540,7 +557,8 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
         val cleaned = rawCode.trim().removePrefix("#").uppercase()
         if (cleaned.isEmpty()) return
         viewModelScope.launch {
-            if (repository.roomExists(cleaned)) {
+            _createState.update { it.copy(joinCodeError = null) }
+            if (repository.roomExists(cleaned) || repository.fetchRemoteRoom(cleaned)) {
                 _createState.update { it.copy(joinCodeError = null) }
                 _activeRoomId.value = cleaned
             } else {
@@ -553,8 +571,18 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
         _createState.update { it.copy(joinCodeError = null) }
     }
 
+    /** Opens a room from history, a notification, a widget or a deep/App Link. */
     fun openRoom(roomId: String) {
-        _activeRoomId.value = roomId.uppercase()
+        val code = roomId.uppercase()
+        viewModelScope.launch {
+            // A link from someone else: fetch the room first so the screen has data to show.
+            if (repository.roomExists(code) || repository.fetchRemoteRoom(code)) {
+                _activeRoomId.value = code
+            } else {
+                val message = getApplication<Application>().getString(R.string.error_room_unavailable, code)
+                _createState.update { it.copy(joinCodeError = message) }
+            }
+        }
     }
 
     fun closeRoom() {
