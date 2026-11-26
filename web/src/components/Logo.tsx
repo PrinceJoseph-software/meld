@@ -1,4 +1,5 @@
 import { navigate } from '../router';
+import { Mark } from './Mark';
 
 export function TopBar({ right }: { right?: React.ReactNode }) {
   return (
@@ -11,7 +12,7 @@ export function TopBar({ right }: { right?: React.ReactNode }) {
           navigate('/');
         }}
       >
-        <img src="/icons/icon-192.png" alt="" width={32} height={32} />
+        <Mark size={34} />
         Meld
       </a>
       {right}

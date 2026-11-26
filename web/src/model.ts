@@ -12,7 +12,7 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore';
 import { ensureSignedIn, services } from './firebase';
-import { clean, effectiveName, getIdentity } from './identity';
+import { clean, effectiveLook, getIdentity } from './identity';
 
 export type RoomMode = 'QUICK_POLL' | 'TIME_SLOTS';
 
@@ -44,6 +44,7 @@ export interface Ballot {
   voterUid: string;
   voterName: string;
   badgeColorIndex: number;
+  avatarStyleIndex: number;
   optionIds: string[];
   updatedAtEpochMs: number;
 }
@@ -54,6 +55,7 @@ export interface Comment {
   voterUid: string;
   voterName: string;
   badgeColorIndex: number;
+  avatarStyleIndex: number;
   optionId: string | null;
   transcript: string;
   durationSeconds: number;
@@ -213,13 +215,14 @@ export async function setMyBallot(room: Room, optionIds: string[]) {
   const { db } = services();
   const ref = doc(db, 'rooms', room.code, 'ballots', uid);
   const me = getIdentity();
+  const look = effectiveLook(me, room.isAnonymous);
   const write = optionIds.length === 0
     ? deleteDoc(ref)
     : setDoc(ref, {
         voterUid: me.uid,
-        voterName: effectiveName(me, room.isAnonymous),
-        badgeColorIndex: me.badgeColorIndex,
-        avatarStyleIndex: 0,
+        voterName: look.name,
+        badgeColorIndex: look.badgeColorIndex,
+        avatarStyleIndex: look.avatarStyleIndex,
         optionIds: room.allowMultiple ? optionIds.slice(0, 20) : optionIds.slice(0, 1),
         updatedAtEpochMs: Date.now(),
       });
@@ -276,6 +279,7 @@ export async function addComment(
 ) {
   const uid = await ensureSignedIn();
   const { db } = services();
+  const look = effectiveLook(getIdentity(), room.isAnonymous);
   const me = getIdentity();
   const id = crypto.randomUUID();
   const seconds = Math.min(60, Math.max(1, Math.round(audio?.seconds ?? 1)));
@@ -283,9 +287,9 @@ export async function addComment(
   batch.set(doc(db, 'rooms', room.code, 'comments', id), {
     authorAuthUid: uid,
     voterUid: me.uid,
-    voterName: effectiveName(me, room.isAnonymous),
-    badgeColorIndex: me.badgeColorIndex,
-    avatarStyleIndex: 0,
+    voterName: look.name,
+    badgeColorIndex: look.badgeColorIndex,
+    avatarStyleIndex: look.avatarStyleIndex,
     optionId,
     transcript: clean(transcript, 300) || `Voice note (0:${String(seconds).padStart(2, '0')})`,
     durationSeconds: seconds,

@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { TopBar } from '../components/Logo';
-import { Avatar } from '../components/Avatar';
+import { AvatarStack, GeometricAvatar } from '../components/GeometricAvatar';
+import { Burst, DeadlineBanner, PushArena, type ArenaOption } from '../components/Arena';
+import { PresentStage } from '../components/PresentStage';
 import { Qr } from '../components/Qr';
 import { ensureSignedIn } from '../firebase';
-import { getIdentity, rememberRoom } from '../identity';
+import { effectiveLook, getIdentity, rememberRoom } from '../identity';
 import {
   addComment,
   addOption,
@@ -84,7 +86,15 @@ function RoomView({ state, authUid }: { state: RoomState; authUid: string | null
   const myBallot = ballots.find((b) => b.authUid === authUid);
   const mine = new Set(myBallot?.optionIds ?? []);
   const [shareOpen, setShareOpen] = useState(false);
+  const [presenting, setPresenting] = useState(false);
   const [newOption, setNewOption] = useState('');
+  const [burst, setBurst] = useState(0);
+  const [myPulse, setMyPulse] = useState(0);
+  const wasOpen = useRef(open);
+  useEffect(() => {
+    if (wasOpen.current && !open) setBurst((b) => b + 1); // decision reached
+    wasOpen.current = open;
+  }, [open]);
 
   const counts = useMemo(() => {
     const c = new Map<string, number>();
@@ -100,29 +110,53 @@ function RoomView({ state, authUid }: { state: RoomState; authUid: string | null
   const sorted = [...options].sort((a, b) => (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0) || a.sortOrder - b.sortOrder);
   const shareUrl = `${location.origin}/r/${room.code}`;
 
-  const vote = (optionId: string) => {
+  const vote = (optionId: string, direction?: 'yes' | 'no') => {
     if (!open) return;
     const next = new Set(mine);
-    if (room.allowMultiple) {
-      if (next.has(optionId)) next.delete(optionId); else next.add(optionId);
-    } else if (next.has(optionId)) {
-      next.clear();
-    } else {
-      next.clear();
-      next.add(optionId);
+    const want = direction ? direction === 'yes' : !next.has(optionId);
+    if (!room.allowMultiple && want) next.clear();
+    if (want) next.add(optionId); else next.delete(optionId);
+    if (want && !mine.has(optionId)) {
+      setBurst((b) => b + 1);
+      setMyPulse((p) => p + 1);
     }
     setMyBallot(room, [...next]);
   };
+
+  const arenaOptions: ArenaOption[] = sorted.map((o) => ({
+    id: o.id,
+    label: o.label,
+    count: counts.get(o.id) ?? 0,
+    voters: ballots.filter((b) => b.optionIds.includes(o.id)).map((b) => ({
+      key: b.authUid, name: b.voterName, avatarStyleIndex: b.avatarStyleIndex ?? 0, colorIndex: b.badgeColorIndex,
+    })),
+  }));
+  const myLook = effectiveLook(getIdentity(), room.isAnonymous);
 
   return (
     <>
       <TopBar
         right={
-          <button className="btn small" onClick={() => setShareOpen((v) => !v)} aria-expanded={shareOpen}>
-            Share <span className="mono">{room.code}</span>
-          </button>
+          <div className="row" style={{ gap: 6 }}>
+            <button className="btn small ghost" onClick={() => setPresenting(true)} aria-label="Present full screen">Present</button>
+            <button className="btn small" onClick={() => setShareOpen((v) => !v)} aria-expanded={shareOpen}>
+              Share <span className="mono">{room.code}</span>
+            </button>
+          </div>
         }
       />
+      <Burst trigger={burst} />
+      {presenting && (
+        <PresentStage
+          question={room.question}
+          code={room.code}
+          url={shareUrl}
+          options={arenaOptions}
+          total={total}
+          winnerId={winnerId}
+          onClose={() => setPresenting(false)}
+        />
+      )}
 
       {shareOpen && <SharePanel room={room} url={shareUrl} />}
 
@@ -135,37 +169,37 @@ function RoomView({ state, authUid }: { state: RoomState; authUid: string | null
         <p className="small muted" style={{ margin: 0 }}>
           {total} vote{total === 1 ? '' : 's'} · {ballots.length} voter{ballots.length === 1 ? '' : 's'}
           {room.allowMultiple ? ' · pick any' : ' · pick one'}
+          {open && ' · swipe → to vote, ← to drop'}
         </p>
+        <div className="row" style={{ marginTop: 12, gap: 10 }}>
+          <GeometricAvatar avatarStyleIndex={myLook.avatarStyleIndex} colorIndex={myLook.badgeColorIndex} size={36} reactionTrigger={myPulse} pushBias={myBallot ? 1 : 0} />
+          <span className="small">
+            You're voting as <strong>{myLook.name}</strong>{room.isAnonymous && <span className="muted"> (mask)</span>}
+          </span>
+        </div>
+        {open && room.deadlineEpochMs != null && (
+          <DeadlineBanner createdAt={room.createdAtEpochMs} deadline={room.deadlineEpochMs} now={now} />
+        )}
       </section>
+
+      <PushArena options={arenaOptions} total={total} locked={!open} winnerId={winnerId} />
 
       <section className="panel stack" aria-label="Options">
         {sorted.map((o) => {
           const count = counts.get(o.id) ?? 0;
-          const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-          const voters = ballots.filter((b) => b.optionIds.includes(o.id));
-          const isWinner = winnerId === o.id;
+          const arena = arenaOptions.find((x) => x.id === o.id)!;
           return (
-            <button
+            <OptionCard
               key={o.id}
-              className={`option${mine.has(o.id) ? ' mine' : ''}${isWinner ? ' winner' : ''}`}
-              disabled={!open}
-              aria-pressed={mine.has(o.id)}
-              onClick={() => vote(o.id)}
-            >
-              <span className="fill" style={{ width: `${pct}%` }} />
-              <span className="content">
-                <span className="check" aria-hidden="true">{mine.has(o.id) ? '✓' : ''}</span>
-                <span className="grow">
-                  <span style={{ fontWeight: 600, display: 'block' }}>{isWinner ? '★ ' : ''}{o.label}</span>
-                  {voters.length > 0 && (
-                    <span className="avatars" style={{ marginTop: 6 }}>
-                      {voters.slice(0, 6).map((v) => <Avatar key={v.authUid} name={v.voterName} colorIndex={v.badgeColorIndex} />)}
-                    </span>
-                  )}
-                </span>
-                <span className="count">{count}<span className="muted small"> · {pct}%</span></span>
-              </span>
-            </button>
+              label={o.label}
+              count={count}
+              pct={total > 0 ? Math.round((count / total) * 100) : 0}
+              voters={arena.voters}
+              mine={mine.has(o.id)}
+              winner={winnerId === o.id}
+              open={open}
+              onVote={(dir) => vote(o.id, dir)}
+            />
           );
         })}
 
@@ -312,7 +346,7 @@ function Opinions({ room, comments, options, open, isOwner, authUid }: {
           const mineComment = c.authorAuthUid === authUid || c.voterUid === me.uid;
           return (
             <div className="comment" key={c.id}>
-              <Avatar name={c.voterName} colorIndex={c.badgeColorIndex} large />
+              <GeometricAvatar avatarStyleIndex={c.avatarStyleIndex ?? 0} colorIndex={c.badgeColorIndex} size={40} title={c.voterName} />
               <div className="grow">
                 <div className="small"><strong>{c.voterName}</strong>{optionLabel && <span className="muted"> · on {optionLabel}</span>}</div>
                 <div style={{ marginTop: 2 }}>{c.transcript}</div>
@@ -378,4 +412,65 @@ function blobToBase64(blob: Blob): Promise<string> {
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+}
+
+/** Option card: tap to toggle, or swipe right to vote / left to withdraw (like the app). */
+function OptionCard({ label, count, pct, voters, mine, winner, open, onVote }: {
+  label: string; count: number; pct: number; voters: ArenaOption['voters']; mine: boolean; winner: boolean; open: boolean;
+  onVote: (dir?: 'yes' | 'no') => void;
+}) {
+  const [dx, setDx] = useState(0);
+  const start = useRef<{ x: number; y: number; id: number } | null>(null);
+  const dragged = useRef(false);
+  const THRESHOLD = 80;
+
+  const onDown = (e: PointerEvent<HTMLButtonElement>) => {
+    if (!open) return;
+    start.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    dragged.current = false;
+  };
+  const onMove = (e: PointerEvent<HTMLButtonElement>) => {
+    const s = start.current;
+    if (!s || s.id !== e.pointerId) return;
+    const x = e.clientX - s.x;
+    if (!dragged.current && Math.abs(x) > 8 && Math.abs(x) > Math.abs(e.clientY - s.y)) {
+      dragged.current = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+    if (dragged.current) setDx(Math.max(-140, Math.min(140, x)));
+  };
+  const onUp = () => {
+    if (dragged.current && Math.abs(dx) >= THRESHOLD) onVote(dx > 0 ? 'yes' : 'no');
+    start.current = null;
+    setDx(0);
+  };
+
+  return (
+    <button
+      className={`option${mine ? ' mine' : ''}${winner ? ' winner' : ''}${dx ? ' dragging' : ''}`}
+      disabled={!open}
+      aria-pressed={mine}
+      style={{ transform: dx ? `translateX(${dx}px) rotate(${dx / 40}deg)` : undefined, touchAction: 'pan-y' }}
+      onPointerDown={onDown}
+      onPointerMove={onMove}
+      onPointerUp={onUp}
+      onPointerCancel={onUp}
+      onClick={(e) => {
+        if (dragged.current) { e.preventDefault(); dragged.current = false; return; }
+        onVote();
+      }}
+    >
+      <span className="fill" style={{ width: `${pct}%` }} />
+      <span className="swipe-hint yes" style={{ opacity: Math.max(0, dx) / THRESHOLD }}>VOTE ›</span>
+      <span className="swipe-hint no" style={{ opacity: Math.max(0, -dx) / THRESHOLD }}>‹ DROP</span>
+      <span className="content" style={{ opacity: dx ? 0.35 + 0.65 * (1 - Math.min(1, Math.abs(dx) / 140)) : 1 }}>
+        <span className="check" aria-hidden="true">{mine ? '✓' : ''}</span>
+        <span className="grow">
+          <span style={{ fontWeight: 600, display: 'block' }}>{winner ? '★ ' : ''}{label}</span>
+          {voters.length > 0 && <span style={{ display: 'block', marginTop: 6 }}><AvatarStack voters={voters} size={26} /></span>}
+        </span>
+        <span className="count">{count}<span className="muted small"> · {pct}%</span></span>
+      </span>
+    </button>
+  );
 }
