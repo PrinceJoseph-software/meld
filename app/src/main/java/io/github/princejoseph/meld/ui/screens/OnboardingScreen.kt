@@ -1,5 +1,6 @@
 package io.github.princejoseph.meld.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
@@ -90,6 +91,14 @@ fun OnboardingScreen(
     val scope = rememberCoroutineScope()
     val pagerState = rememberPagerState(pageCount = { ONBOARDING_SLIDES.size })
     val isLastPage = pagerState.currentPage == ONBOARDING_SLIDES.lastIndex
+
+    BackHandler {
+        if (pagerState.currentPage > 0) {
+            scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+        } else {
+            onFinish()
+        }
+    }
 
     Surface(
         modifier = modifier

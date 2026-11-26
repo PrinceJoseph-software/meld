@@ -322,15 +322,18 @@ private fun MeldAppShell(
                 onFinished = { launchRevealFinished = true }
             )
         }
+    }
 
-        if (hasCompletedOnboarding == false || showOnboardingTour) {
-            OnboardingScreen(
-                onFinish = {
-                    showOnboardingTour = false
-                    viewModel.completeOnboarding()
-                }
-            )
-        }
+    // Rendered outside the status-bar-padded shell so the tour is truly edge-to-edge:
+    // its background reaches under the system bars, and OnboardingScreen applies the
+    // system-bar insets to its own content exactly once.
+    if (hasCompletedOnboarding == false || showOnboardingTour) {
+        OnboardingScreen(
+            onFinish = {
+                showOnboardingTour = false
+                viewModel.completeOnboarding()
+            }
+        )
     }
 
     if (showHistorySheet) {

@@ -206,7 +206,6 @@ fun AvatarStudioSheet(
                     .clip(RoundedCornerShape(14.dp))
                     .background(colors.canvas)
                     .border(1.dp, colors.hairline, RoundedCornerShape(14.dp))
-                    .draftingDotGrid(colors.dotGrid)
                     .padding(16.dp)
             ) {
                 Row(
