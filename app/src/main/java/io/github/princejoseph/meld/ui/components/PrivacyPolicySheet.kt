@@ -81,7 +81,7 @@ fun PrivacyPolicySheet(
                             color = colors.inkPrimary
                         )
                         Text(
-                            text = "Zero-login, local-first by design",
+                            text = "Zero-login, offline-first by design",
                             fontFamily = PlusJakartaSansFamily,
                             fontSize = 12.sp,
                             color = colors.inkSecondary
@@ -100,25 +100,25 @@ fun PrivacyPolicySheet(
             PrivacySectionCard(
                 icon = Icons.Outlined.Storage,
                 title = "Local-First Storage & Zero Accounts",
-                body = "Meld requires no sign-up, email, or phone number. Your display profile, Bauhaus avatar, rooms, votes, and preferences stay on your device in Room & DataStore."
+                body = "Meld requires no sign-up, email, or phone number. Your profile, avatar and preferences stay on your device. Rooms, votes and opinions are saved on your device first and work offline."
             )
 
             PrivacySectionCard(
                 icon = Icons.Outlined.Shield,
-                title = "Anonymous Mode & Salted Hashing",
-                body = "In secret-ballot rooms, anti-spam protection hashes your network identifier with a local device salt (SHA-256). Raw IP addresses are never saved or exposed."
+                title = "Shared Rooms & Anonymous Mode",
+                body = "To let others vote, a room you share and the ballots and opinions in it are stored with Google Firebase and visible to anyone with the room's code. Each device gets a random id (no name, email or phone) so there is one ballot per device. In anonymous rooms only your mask name is shown."
             )
 
             PrivacySectionCard(
                 icon = Icons.Outlined.MicNone,
                 title = "Offline Microphone & Calendar Access",
-                body = "Voice notes are recorded locally in private app storage using Android MediaRecorder—never sent to external speech servers. Calendar sync reads availability locally."
+                body = "Voice notes are recorded on your device and uploaded only when you post them to a shared room. Calendar sync reads availability on your device; calendar events are never uploaded."
             )
 
             PrivacySectionCard(
                 icon = Icons.Outlined.Lock,
                 title = "No Ads, No Trackers, No Cloud Backup",
-                body = "Meld contains zero analytics or ad SDKs. Android Auto Backup is disabled (allowBackup=false). Deleting a room or voice note immediately erases its local files."
+                body = "Meld contains zero analytics or ad SDKs. Android Auto Backup is disabled. Deleting a room from your history erases it and its voice notes from this device; deleting your opinion removes it everywhere."
             )
 
             Text(
