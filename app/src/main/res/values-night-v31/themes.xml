@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Meld" parent="android:Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowBackground">@color/meld_launch_bg</item>
+        <item name="android:windowSplashScreenBackground">@color/meld_launch_bg</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_meld_splash_mark</item>
+    </style>
+</resources>

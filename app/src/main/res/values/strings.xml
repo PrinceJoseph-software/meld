@@ -1,0 +1,294 @@
+<resources>
+    <string name="app_name">Meld</string>
+
+    <!-- Top Bar & Theme -->
+    <string name="cd_meld_logo">Meld home</string>
+    <string name="cd_toggle_theme">Switch light or dark theme</string>
+
+    <!-- Mode Switcher -->
+    <string name="mode_quick_poll">Quick Poll</string>
+    <string name="mode_time_slots">Time Slots</string>
+
+    <!-- Creation Canvas -->
+    <string name="placeholder_question_poll">What are we deciding?</string>
+    <string name="placeholder_question_time">When works for everyone?</string>
+    <string name="placeholder_option_poll">Option %1$d</string>
+    <string name="placeholder_option_time_1">Thu, 7:00 PM</string>
+    <string name="placeholder_option_time_2">Fri, 12:30 PM</string>
+    <string name="placeholder_option_time_3">Sat, 4:00 PM</string>
+    <string name="placeholder_option_time_n">Add time slot %1$d</string>
+    <string name="action_add_option">Add option</string>
+    <string name="action_pick_time">Pick date &amp; time</string>
+    <string name="action_calendar_sync">Calendar Sync</string>
+    <string name="cd_move_option_up">Move option up</string>
+    <string name="cd_move_option_down">Move option down</string>
+    <string name="cd_drag_option">Reorder option</string>
+    <string name="cd_remove_option">Remove option</string>
+    <string name="setting_multiple_picks">Multiple picks allowed</string>
+    <string name="setting_friends_add">Let friends add options</string>
+    <string name="setting_anonymous_votes">Anonymous votes</string>
+    <string name="setting_deadline_label">Poll deadline</string>
+    <string name="deadline_none">Off</string>
+    <string name="deadline_1m">1m</string>
+    <string name="deadline_5m">5m</string>
+    <string name="deadline_15m">15m</string>
+    <string name="deadline_1h">1h</string>
+    <string name="deadline_24h">24h</string>
+    <string name="deadline_custom">Custom</string>
+    <string name="deadline_preview">Auto-closes at %1$s</string>
+    <string name="custom_deadline_title">Custom Poll Deadline</string>
+    <string name="custom_deadline_minutes_hint">Minutes until close (1 – 10080)</string>
+    <string name="action_set_deadline">Set Deadline</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="cta_create_room">Create Decision Room</string>
+    <string name="recent_rooms_label">RECENT ROOMS</string>
+    <string name="quick_start_label">QUICK START</string>
+    <string name="join_code_placeholder">Join with #code…</string>
+    <string name="action_join">Join</string>
+    <string name="error_room_not_found">No room found with code #%1$s</string>
+    <string name="room_votes_count">%1$d votes</string>
+    <string name="room_locked_tag">LOCKED</string>
+
+    <!-- Calendar Sync Sheet -->
+    <string name="calendar_sheet_title">Calendar Availability</string>
+    <string name="calendar_sheet_subtitle">Suggest free time blocks from your device calendar or an .ics file</string>
+    <string name="action_sync_device_calendar">Sync Device Calendar</string>
+    <string name="action_import_ics">Import .ics File</string>
+    <string name="action_apply_slots">Populate Time Slots (%1$d)</string>
+    <string name="calendar_permission_denied">Calendar access declined. You can still import an .ics file below.</string>
+    <string name="calendar_suggested_header">AVAILABLE BLOCKS</string>
+    <string name="calendar_source_device">Synced from device calendar</string>
+    <string name="calendar_source_ics">Parsed from .ics calendar file</string>
+    <string name="calendar_ics_error">Could not read events from that .ics file.</string>
+
+    <!-- Decision Room -->
+    <string name="cd_back_to_create">Back to create room</string>
+    <string name="voter_pill_prefix">Voting as</string>
+    <string name="voter_guest_prompt">Guest • Tap to customize</string>
+    <string name="voter_edit_hint">Tap to edit</string>
+    <string name="voter_name_placeholder">Your name…</string>
+    <string name="avatar_style_label">AVATAR STYLE</string>
+    <string name="action_save_name">Done</string>
+    <string name="room_meta_just_now">Created just now</string>
+    <string name="room_meta_expires">Expires in %1$dd</string>
+    <string name="action_share_link">Share Link</string>
+    <string name="action_link_copied">Link Copied</string>
+    <string name="cd_show_qr">Share &amp; QR code</string>
+    <string name="badge_leading">LEADING</string>
+    <string name="badge_tied">TIED</string>
+    <string name="badge_unanimous">UNANIMOUS</string>
+    <string name="badge_winner">WINNER</string>
+    <string name="badge_queued">QUEUED</string>
+    <string name="badge_decision_locked">DECISION LOCKED</string>
+    <string name="badge_timer_ended">VOTING CLOSED</string>
+    <string name="closes_in_label">CLOSES %1$s</string>
+    <string name="deadline_card_label">POLL DEADLINE</string>
+    <string name="deadline_closes_at">Auto-closes %1$s</string>
+    <string name="deadline_expired_banner">Deadline reached • Voting automatically closed</string>
+    <string name="anonymous_room_hint">Anonymous voting active</string>
+    <string name="placeholder_friend_add_option">Add an option…</string>
+    <string name="action_add_inline">Add</string>
+
+    <!-- Decision Insight Badge -->
+    <string name="decision_insight_label">DECISION INSIGHT</string>
+    <string name="consensus_window_tag">CONSENSUS WINDOW</string>
+    <string name="consensus_pick_tag">CONSENSUS PICK</string>
+    <string name="suggested_meeting_time_prefix">Suggested time</string>
+    <string name="suggested_pick_prefix">Top consensus</string>
+    <string name="insight_awaiting_votes">Cast votes to reveal the highest-overlap window</string>
+    <string name="insight_tied_summary">Tied overlap with %1$s</string>
+    <string name="insight_overlap_ratio">%1$d/%2$d overlap · %3$d%%</string>
+    <string name="insight_unanimous_tag">100%% OVERLAP</string>
+    <string name="action_lock_suggested">Lock</string>
+
+    <!-- Conflict Detector -->
+    <string name="conflict_detector_label">CONFLICT DETECTOR</string>
+    <string name="conflict_badge_pill">CONFLICT</string>
+    <string name="priority_participants_label">HIGH-PRIORITY PARTICIPANTS</string>
+    <string name="priority_participants_hint">Tap to toggle priority</string>
+    <string name="conflict_alert_overlap">%1$d high-priority participants (%2$s) have overlapping commitments during %3$s</string>
+    <string name="conflict_alert_deadlock">High-priority participants (%1$s) are split across slots with no shared window yet</string>
+    <string name="action_switch_conflict_free">Pick %1$s</string>
+
+    <!-- Offline Sync Status -->
+    <string name="sync_status_live">LIVE SYNC</string>
+    <string name="sync_status_syncing">SYNCING %1$d…</string>
+    <string name="sync_status_offline_queued">OFFLINE • %1$d QUEUED</string>
+    <string name="sync_status_offline">OFFLINE • LOCAL QUEUE</string>
+    <string name="action_toggle_offline_sim">Go Offline</string>
+    <string name="action_toggle_online_sim">Reconnect</string>
+
+    <!-- Creator Toolbar -->
+    <string name="creator_toolbar_label">CREATOR CONTROLS</string>
+    <string name="action_crown_winner">Crown Winner</string>
+    <string name="action_runoff_tiebreaker">Runoff Tie-Breaker</string>
+    <string name="action_reset_votes">Reset Votes</string>
+    <string name="action_copy_summary">Copy Result Summary</string>
+    <string name="action_summary_copied">Summary Copied</string>
+    <string name="action_export_to_calendar">Export to Calendar</string>
+    <string name="calendar_event_description">Decided via Meld (#%1$s) • Winning slot: %2$s</string>
+    <string name="calendar_no_app_error">No calendar app found on this device</string>
+    <string name="action_reopen_room">Reopen Voting</string>
+
+    <!-- Demo / Live Sync Simulation -->
+    <string name="action_simulate_friends">Simulate 3 Friends</string>
+    <string name="simulating_friends">Friends voting…</string>
+
+    <!-- SharePopover & Generate QR -->
+    <string name="share_popover_title">Share Decision Room</string>
+    <string name="share_popover_subtitle">Zero-login instant sync for everyone in your group</string>
+    <string name="action_generate_qr">Generate QR Code</string>
+    <string name="action_hide_qr">Hide QR Code</string>
+    <string name="qr_ready_caption">Point any phone camera to join #%1$s</string>
+    <string name="action_system_share">Send via Share Sheet</string>
+    <string name="action_close">Close</string>
+
+    <!-- Swipe-to-Vote & History -->
+    <string name="swipe_vote_hint">SWIPE → YES  ·  ← NO</string>
+    <string name="swipe_yes_label">YES</string>
+    <string name="swipe_no_label">NO</string>
+    <string name="badge_declined">NO</string>
+    <string name="cd_open_history">View past polls history</string>
+    <string name="history_title">Past Decisions</string>
+    <string name="history_subtitle">Reopen any poll, inspect winners, or clear old rooms</string>
+    <string name="history_search_placeholder">Search question or #code…</string>
+    <string name="history_filter_all">All</string>
+    <string name="history_filter_active">Active</string>
+    <string name="history_filter_locked">Locked</string>
+    <string name="history_view_all">View all</string>
+    <string name="history_empty">No past polls match your filter yet.</string>
+    <string name="history_winner_prefix">Winner: %1$s</string>
+    <string name="cd_delete_history_room">Remove from history</string>
+
+    <!-- Gamified Decision Momentum Arena -->
+    <string name="arena_label">DECISION MOMENTUM</string>
+    <string name="arena_idle_prompt">Vote to put your avatar on the push track</string>
+    <string name="arena_pushing_label">%1$d pushing</string>
+    <string name="arena_nudge_action">Push</string>
+    <string name="arena_level_spark">SPARK</string>
+    <string name="arena_level_rally">RALLY</string>
+    <string name="arena_level_surge">SURGE</string>
+    <string name="arena_level_locked">DECIDED</string>
+    <string name="arena_tug_caption">%1$s (%2$d) vs %3$s (%4$d)</string>
+    <string name="arena_consensus_caption">%1$s leading the push • %2$d%%</string>
+    <string name="arena_winner_caption">Pushed across the line: %1$s</string>
+
+    <!-- Avatar Studio -->
+    <string name="avatar_studio_title">Avatar Studio</string>
+    <string name="avatar_studio_subtitle">Craft your Bauhaus badge across 67,000+ combinations</string>
+    <string name="avatar_action_shuffle">Shuffle</string>
+    <string name="avatar_action_test_push">Test Push</string>
+    <string name="avatar_action_save">Save Identity</string>
+    <string name="avatar_open_studio">Customize</string>
+    <string name="avatar_tab_chassis">Chassis</string>
+    <string name="avatar_tab_eyes">Eyes</string>
+    <string name="avatar_tab_gear">Gear</string>
+    <string name="avatar_tab_pattern">Pattern</string>
+    <string name="avatar_tab_frame">Frame</string>
+    <string name="avatar_tab_palette">Palette</string>
+
+    <!-- Yes / No Distribution Visualization -->
+    <string name="chart_title">YES / NO DISTRIBUTION</string>
+    <string name="chart_legend_yes">YES</string>
+    <string name="chart_legend_no">NO</string>
+    <string name="chart_top_slot">MOST POPULAR</string>
+    <string name="chart_tap_hint">Tap any slot bar to inspect</string>
+    <string name="chart_tooltip_summary">%1$d Yes · %2$d No · Net %3$s</string>
+
+    <!-- Notifications & Reminders -->
+    <string name="notif_channel_deadlines_name">Poll Deadlines</string>
+    <string name="notif_channel_deadlines_desc">Alerts when a timed Meld poll is about to close</string>
+    <string name="notif_channel_decisions_name">Final Decisions</string>
+    <string name="notif_channel_decisions_desc">Alerts when a poll reaches consensus or locks a winner</string>
+    <string name="notif_deadline_title">Closing soon: %1$s</string>
+    <string name="notif_deadline_body_with_leader">%1$s left · Leading: %2$s (%3$d votes)</string>
+    <string name="notif_deadline_body_simple">%1$s left · %2$d votes cast so far</string>
+    <string name="notif_decision_title">Decision reached: %1$s</string>
+    <string name="notif_decision_body_winner">Locked winner: %1$s (%2$d votes)</string>
+    <string name="notif_decision_body_closed">Voting has closed and results are locked.</string>
+    <string name="notif_action_vote_now">Vote Now</string>
+    <string name="notif_action_view_result">View Decision</string>
+    <string name="notif_enable_alerts">Enable Alerts</string>
+    <string name="notif_alerts_active">Alerts On</string>
+    <string name="cd_toggle_deadline_alerts">Enable deadline and decision notifications</string>
+
+    <!-- Home Screen Widgets -->
+    <string name="widget_poll_label">Meld Quick Vote</string>
+    <string name="widget_poll_description">Vote on active Meld polls and see voter avatars right on your home screen</string>
+    <string name="widget_avatar_label">Meld Avatar Push</string>
+    <string name="widget_avatar_description">Your custom Bauhaus avatar with one-tap leader push</string>
+    <string name="action_pin_widget">Add to Home Screen</string>
+    <string name="widget_pin_requested">Home screen widget pin requested</string>
+    <string name="widget_pin_unsupported">Long-press your home screen to add a Meld widget</string>
+
+    <!-- Screen Sharing & Live Broadcast Stage -->
+    <string name="action_screen_share">Present &amp; Share</string>
+    <string name="cd_present_stage">Open live screen-share presentation stage</string>
+    <string name="stage_live_badge">LIVE STAGE</string>
+    <string name="stage_scan_to_vote">Scan to vote live</string>
+    <string name="stage_share_card">Share Poll Card</string>
+    <string name="stage_cast_display">Mirror to Display (%1$s)</string>
+    <string name="stage_casting_active">Mirroring to %1$s</string>
+    <string name="stage_close">Exit Stage</string>
+    <string name="stage_votes_count">%1$d votes live</string>
+    <string name="stage_share_hint">Share your screen in Meet/Zoom or send a live poll card</string>
+
+    <!-- Anonymous IP Lock -->
+    <string name="anon_ip_locked_badge">IP LOCK • %1$s</string>
+    <string name="anon_ip_lock_notice">Anonymous voting is locked to your network IP to prevent duplicate ballots.</string>
+
+    <!-- Settings & Anonymous Badge Customization -->
+    <string name="settings_title">Settings &amp; Identity</string>
+    <string name="settings_subtitle">Anonymous disguise, preferences &amp; theme</string>
+    <string name="settings_anon_badge_title">Anonymous User Badge</string>
+    <string name="settings_anon_badge_subtitle">Pick geometric shape, palette &amp; pattern for secret voting</string>
+    <string name="settings_anon_mask_name">Mask Name</string>
+    <string name="settings_anon_mask_hint">e.g. Agent 07, Phantom, Incognito…</string>
+    <string name="settings_shape_picker">Geometric Shape</string>
+    <string name="settings_palette_picker">Color Palette</string>
+    <string name="settings_pattern_picker">Surface Pattern</string>
+    <string name="settings_face_gear_picker">Face &amp; Expression</string>
+    <string name="settings_haptics_label">Tactile Haptics</string>
+    <string name="settings_haptics_desc">Subtle vibration on voting and dragging</string>
+    <string name="settings_language_label">Application Language</string>
+    <string name="settings_theme_label">Color Theme</string>
+    <string name="settings_action_save">Save Settings</string>
+    <string name="settings_anon_shuffle">Random Disguise</string>
+    <string name="settings_anon_preview_hint">This badge disguises your identity on anonymous ballots</string>
+    <string name="cd_open_settings">Open settings</string>
+
+    <!-- Voice Comments & Opinions -->
+    <string name="voice_comments_header">VOICE OPINIONS</string>
+    <string name="voice_comments_empty">No voice opinions yet. Tap the mic to speak your reasoning!</string>
+    <string name="voice_comments_record">Record Voice Opinion</string>
+    <string name="voice_comments_recording">Listening… speak your opinion</string>
+    <string name="voice_comments_play">Play</string>
+    <string name="voice_comments_stop">Stop</string>
+    <string name="voice_comments_on_option">On: %1$s</string>
+    <string name="voice_comments_general">General Opinion</string>
+    <string name="voice_comments_delete">Delete opinion</string>
+    <string name="voice_comments_target_picker">Topic:</string>
+    <string name="voice_comments_add_opinion">Voice Opinion</string>
+    <string name="voice_comments_duration">%1$ds</string>
+    <string name="voice_comments_mic_prompt">Speak your thought clearly</string>
+    <string name="voice_comments_attached">Voice opinion added</string>
+
+    <!-- Calendar & Stage Fallbacks -->
+    <string name="action_export_calendar">Add to Calendar</string>
+    <string name="event_added_calendar">Event added to device calendar!</string>
+    <string name="action_present_stage">Live Screen Present</string>
+    <string name="live_stage_title">Live Presentation Stage</string>
+    <string name="live_stage_subtitle">Mirror this screen with your group</string>
+    <string name="chart_yes_votes">Yes (%1$d)</string>
+    <string name="chart_no_votes">No (%1$d)</string>
+    <string name="chart_empty_title">No votes cast yet</string>
+    <string name="chart_empty_subtitle">Vote on options above to view the distribution</string>
+    <string name="notification_deadline_title">Poll Deadline Approaching!</string>
+    <string name="notification_deadline_text">Room \"%1$s\" closes soon. Cast your vote now!</string>
+    <string name="notification_decision_title">Decision Reached in \"%1$s\"!</string>
+    <string name="notification_decision_text">Winner: %1$s. Tap to view details.</string>
+
+    <!-- Error / Empty -->
+    <string name="error_empty_question">Enter a question to start</string>
+    <string name="error_min_options">Add at least 2 options</string>
+</resources>
