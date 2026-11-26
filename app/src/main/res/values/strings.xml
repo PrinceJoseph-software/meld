@@ -233,10 +233,6 @@
     <string name="stage_votes_count">%1$d votes live</string>
     <string name="stage_share_hint">Share your screen in Meet/Zoom or send a live poll card</string>
 
-    <!-- Anonymous IP Lock -->
-    <string name="anon_ip_locked_badge">IP LOCK • %1$s</string>
-    <string name="anon_ip_lock_notice">Anonymous voting is locked to your network IP to prevent duplicate ballots.</string>
-
     <!-- Settings & Anonymous Badge Customization -->
     <string name="settings_title">Settings &amp; Identity</string>
     <string name="settings_subtitle">Anonymous disguise, preferences &amp; theme</string>
