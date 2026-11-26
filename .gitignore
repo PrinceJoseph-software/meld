@@ -31,3 +31,4 @@ app/google-services.json
 # Generated at build time from ANDROID_CERT_SHA256
 web/public/.well-known/
 *.tsbuildinfo
+.api-test/

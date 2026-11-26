@@ -3,6 +3,7 @@ import { connectAuthEmulator, getAuth, signInAnonymously, type Auth } from 'fire
 import {
   connectFirestoreEmulator,
   initializeFirestore,
+  memoryLocalCache,
   persistentLocalCache,
   persistentMultipleTabManager,
   type Firestore,
@@ -29,8 +30,13 @@ export function services(): { db: Firestore; auth: Auth } {
       projectId: env.VITE_FIREBASE_PROJECT_ID,
       appId: env.VITE_FIREBASE_APP_ID,
     });
+    // Embedded in another site (iframe): browsers partition or block third-party storage,
+    // so use an in-memory cache there. Everywhere else, the persistent offline cache.
+    const embedded = location.pathname.startsWith('/embed/');
     db = initializeFirestore(app, {
-      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+      localCache: embedded
+        ? memoryLocalCache()
+        : persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
     });
     auth = getAuth(app);
     if (env.VITE_USE_FIREBASE_EMULATOR === 'true') {

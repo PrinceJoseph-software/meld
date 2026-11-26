@@ -280,3 +280,12 @@ dialog.studio { width: min(520px, calc(100vw - 24px)); max-height: calc(100dvh -
 .lane-runner { position: absolute; top: 4px; transition: left 600ms cubic-bezier(.34,1.56,.64,1); }
 .lane-empty { display: block; width: 44px; height: 44px; border-radius: 50%; border: 2px dashed var(--hairline); }
 .stage-close { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); }
+
+/* Ranked choice */
+.check.ranked { font: 700 12px var(--mono); }
+.ranking { padding: 10px 12px; border-radius: 12px; background: var(--inset); flex-wrap: wrap; gap: 8px; }
+.rounds summary { cursor: pointer; color: var(--ink-2); }
+.rounds ol { margin: 8px 0 0; padding-left: 20px; }
+.rounds li + li { margin-top: 4px; }
+/* Embedded (iframe) */
+.app.embedded { padding-top: 4px; }

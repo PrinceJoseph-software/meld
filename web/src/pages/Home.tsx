@@ -35,6 +35,8 @@ export function Home() {
   const [allowMultiple, setAllowMultiple] = useState(false);
   const [allowFriendsToAdd, setAllowFriendsToAdd] = useState(false);
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [isRanked, setIsRanked] = useState(false);
+  const [repeatWeekly, setRepeatWeekly] = useState(false);
   const [deadline, setDeadline] = useState<number | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -63,6 +65,8 @@ export function Home() {
         allowMultiple,
         allowFriendsToAdd,
         isAnonymous,
+        isRanked,
+        repeatWeekly,
         deadlineMinutes: deadline,
       });
       navigate(`/r/${room}`);
@@ -188,8 +192,14 @@ export function Home() {
           </div>
         </div>
 
-        <label className="toggle"><span>Allow multiple choices</span>
-          <input type="checkbox" checked={allowMultiple} onChange={(e) => setAllowMultiple(e.target.checked)} /></label>
+        <label className="toggle"><span>Ranked choice <span className="small muted">(order your favourites; instant runoff)</span></span>
+          <input type="checkbox" checked={isRanked} onChange={(e) => { setIsRanked(e.target.checked); if (e.target.checked) setAllowMultiple(false); }} /></label>
+        {!isRanked && (
+          <label className="toggle"><span>Allow multiple choices</span>
+            <input type="checkbox" checked={allowMultiple} onChange={(e) => setAllowMultiple(e.target.checked)} /></label>
+        )}
+        <label className="toggle"><span>Repeat every week <span className="small muted">(a fresh poll each week, same link)</span></span>
+          <input type="checkbox" checked={repeatWeekly} onChange={(e) => setRepeatWeekly(e.target.checked)} /></label>
         <label className="toggle"><span>Friends can add options</span>
           <input type="checkbox" checked={allowFriendsToAdd} onChange={(e) => setAllowFriendsToAdd(e.target.checked)} /></label>
         <label className="toggle"><span>Anonymous (show masks, not names)</span>
