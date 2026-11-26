@@ -264,6 +264,7 @@ private fun MeldAppShell(
                             onModeChange = viewModel::setMode,
                             onApplyQuickTemplate = viewModel::applyQuickTemplate,
                             onQuestionChange = viewModel::updateQuestion,
+                            onQuestionVoiceChange = viewModel::setQuestionVoice,
                             onOptionChange = viewModel::updateOption,
                             onAddOptionAfter = viewModel::addOptionAfter,
                             onConsumeOptionFocus = viewModel::consumeNewlyAddedOptionFocus,

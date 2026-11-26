@@ -105,16 +105,10 @@ app/src/main/java/io/github/princejoseph/meld/
    - Select **Open** and choose the `meld` root directory.
    - Allow Gradle sync to complete.
 
-3. **Configure Environment (Optional)**:
-   - Copy `.env.example` to `.env` if configuring API keys:
-     ```bash
-     cp .env.example .env
-     ```
-
-4. **Build and Test**:
+3. **Build and Test**:
    ```bash
-   ./gradlew assembleDebug
-   ./gradlew testDebugUnitTest
+   gradle assembleDebug
+   gradle testDebugUnitTest
    ```
 
 ---

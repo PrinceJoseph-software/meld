@@ -7,7 +7,10 @@ import io.github.princejoseph.meld.data.AvatarSpec
 import io.github.princejoseph.meld.data.IdentityStore
 import io.github.princejoseph.meld.data.MeldDatabase
 import io.github.princejoseph.meld.data.MeldRepository
+import io.github.princejoseph.meld.data.OptionUiModel
+import io.github.princejoseph.meld.data.RoomDetailsUiModel
 import io.github.princejoseph.meld.data.RoomMode
+import io.github.princejoseph.meld.ui.components.PollCardImageExporter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -146,5 +149,39 @@ class ExampleRobolectricTest {
         assertTrue(lockedRoom.voiceComments.isEmpty())
 
         db.close()
+    }
+
+    @Test
+    fun `poll card image exporter renders 1080x1350 bitmap and writes png uri`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val room = RoomDetailsUiModel(
+            id = "CARD99",
+            question = "Where should we celebrate?",
+            mode = RoomMode.QUICK_POLL,
+            allowMultiple = false,
+            allowFriendsToAdd = false,
+            isCreator = true,
+            isLocked = true,
+            winnerOptionId = "o1",
+            createdAtEpochMs = 1_000L,
+            expiresAtEpochMs = 100_000L,
+            options = listOf(
+                OptionUiModel("o1", "Ramen House", 0, 4, 80, 0.8f, true, false, true, isWinner = true, voters = emptyList()),
+                OptionUiModel("o2", "Taco Bar", 1, 1, 20, 0.2f, false, false, false, isWinner = false, voters = emptyList())
+            ),
+            totalVotes = 5,
+            activeVoters = emptyList(),
+            queuedVoteCount = 0,
+            hasTiedLeaders = false
+        )
+
+        val bmp = PollCardImageExporter.renderCardBitmap(room)
+        assertEquals(1080, bmp.width)
+        assertEquals(1350, bmp.height)
+        bmp.recycle()
+
+        val file = PollCardImageExporter.exportToFile(context, room)
+        assertTrue(file != null && file.exists() && file.length() > 0L)
+        assertTrue(file!!.name == "meld_card_CARD99.png")
     }
 }

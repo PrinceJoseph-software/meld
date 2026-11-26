@@ -1,8 +1,14 @@
 ﻿package io.github.princejoseph.meld.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.media.MediaPlayer
+import android.media.MediaRecorder
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -26,6 +32,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -50,8 +57,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.DragIndicator
@@ -70,12 +80,15 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -115,10 +128,13 @@ import io.github.princejoseph.meld.ui.theme.JetBrainsMonoFamily
 import io.github.princejoseph.meld.ui.theme.MeldTheme
 import io.github.princejoseph.meld.ui.theme.MonoTabularTextStyle
 import io.github.princejoseph.meld.ui.theme.PlusJakartaSansFamily
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
+import java.util.UUID
+import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -130,6 +146,7 @@ fun CreateRoomScreen(
     onModeChange: (RoomMode) -> Unit,
     onApplyQuickTemplate: (RoomMode, String, List<String>) -> Unit,
     onQuestionChange: (String) -> Unit,
+    onQuestionVoiceChange: (String?, Int) -> Unit = { _, _ -> },
     onOptionChange: (String, String) -> Unit,
     onAddOptionAfter: (String?) -> Unit,
     onConsumeOptionFocus: () -> Unit,
@@ -208,15 +225,94 @@ fun CreateRoomScreen(
 
                 Spacer(modifier = Modifier.height(22.dp))
 
-                val speechLauncher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.StartActivityForResult()
-                ) { result ->
-                    if (result.resultCode == android.app.Activity.RESULT_OK) {
-                        val data = result.data
-                        val results = data?.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)
-                        val spoken = results?.firstOrNull() ?: return@rememberLauncherForActivityResult
-                        onQuestionChange(spoken)
+                val context = LocalContext.current
+                var isRecordingQuestion by remember { mutableStateOf(false) }
+                var questionRecSeconds by remember { mutableIntStateOf(0) }
+                var questionRecPath by remember { mutableStateOf<String?>(null) }
+                var questionRecorder by remember { mutableStateOf<MediaRecorder?>(null) }
+                var questionPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
+                var isPlayingQuestionVoice by remember { mutableStateOf(false) }
+
+                DisposableEffect(Unit) {
+                    onDispose {
+                        runCatching { questionRecorder?.stop() }
+                        runCatching { questionRecorder?.release() }
+                        runCatching { questionPlayer?.stop() }
+                        runCatching { questionPlayer?.release() }
                     }
+                }
+
+                fun startQuestionRecording() {
+                    runCatching { questionPlayer?.stop() }
+                    runCatching { questionPlayer?.release() }
+                    questionPlayer = null
+                    isPlayingQuestionVoice = false
+
+                    val dir = File(context.filesDir, "voice_notes").apply { mkdirs() }
+                    val outFile = File(dir, "q_${UUID.randomUUID()}.m4a")
+                    val rec = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        MediaRecorder(context)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        MediaRecorder()
+                    }
+                    val ok = runCatching {
+                        rec.setAudioSource(MediaRecorder.AudioSource.MIC)
+                        rec.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                        rec.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                        rec.setAudioEncodingBitRate(64_000)
+                        rec.setAudioSamplingRate(16_000)
+                        rec.setOutputFile(outFile.absolutePath)
+                        rec.prepare()
+                        rec.start()
+                    }.isSuccess
+                    if (ok) {
+                        questionRecorder = rec
+                        questionRecPath = outFile.absolutePath
+                        questionRecSeconds = 0
+                        isRecordingQuestion = true
+                    } else {
+                        runCatching { rec.release() }
+                        runCatching { outFile.delete() }
+                        isRecordingQuestion = false
+                    }
+                }
+
+                fun stopQuestionRecording() {
+                    val rec = questionRecorder
+                    val path = questionRecPath
+                    val dur = questionRecSeconds.coerceIn(1, 60)
+                    questionRecorder = null
+                    questionRecPath = null
+                    isRecordingQuestion = false
+
+                    val stopped = runCatching { rec?.stop() }.isSuccess
+                    runCatching { rec?.release() }
+                    if (stopped && path != null && File(path).exists() && File(path).length() > 0L) {
+                        state.questionVoicePath?.let { old -> runCatching { File(old).delete() } }
+                        view.performTactileConfirm()
+                        onQuestionVoiceChange(path, dur)
+                    } else if (path != null) {
+                        runCatching { File(path).delete() }
+                    }
+                }
+
+                LaunchedEffect(isRecordingQuestion) {
+                    if (isRecordingQuestion) {
+                        while (isRecordingQuestion && questionRecSeconds < 60) {
+                            delay(1000L)
+                            questionRecSeconds += 1
+                        }
+                        if (isRecordingQuestion && questionRecSeconds >= 60) {
+                            stopQuestionRecording()
+                        }
+                    }
+                }
+
+                val micPermissionLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.RequestPermission()
+                ) { granted ->
+                    if (granted) startQuestionRecording()
                 }
 
                 val questionPlaceholder = stringResource(
@@ -260,26 +356,133 @@ fun CreateRoomScreen(
                     IconButton(
                         onClick = {
                             view.performTactileTick()
-                            val intent = android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                                putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Speak your question...")
+                            if (isRecordingQuestion) {
+                                stopQuestionRecording()
+                            } else {
+                                val granted = ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.RECORD_AUDIO
+                                ) == PackageManager.PERMISSION_GRANTED
+                                if (granted) {
+                                    startQuestionRecording()
+                                } else {
+                                    micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                }
                             }
-                            try {
-                                speechLauncher.launch(intent)
-                            } catch (e: Exception) {}
                         },
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(colors.vermilion.copy(alpha = 0.1f))
+                            .background(if (isRecordingQuestion) colors.vermilion else colors.vermilion.copy(alpha = 0.1f))
                             .testTag("voice_dictate_button")
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Mic,
-                            contentDescription = "Voice Dictate Question",
-                            tint = colors.vermilion,
+                            imageVector = if (isRecordingQuestion) Icons.Outlined.Stop else Icons.Outlined.Mic,
+                            contentDescription = if (isRecordingQuestion) "Stop Recording Question" else "Record Voice Question",
+                            tint = if (isRecordingQuestion) Color.White else colors.vermilion,
                             modifier = Modifier.size(20.dp)
                         )
+                    }
+                }
+
+                // Live Recording or Saved Voice Question Preview (MediaPlayer)
+                AnimatedVisibility(visible = isRecordingQuestion || !state.questionVoicePath.isNullOrBlank()) {
+                    val voicePath = state.questionVoicePath
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(colors.canvas)
+                            .border(1.dp, colors.vermilion.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        if (isRecordingQuestion) {
+                            Text(
+                                text = "Recording voice question • 0:${questionRecSeconds.toString().padStart(2, '0')}",
+                                fontFamily = JetBrainsMonoFamily,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = colors.vermilion
+                            )
+                            TextButton(
+                                onClick = { stopQuestionRecording() },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                            ) {
+                                Text("Save", fontWeight = FontWeight.Bold, color = colors.vermilion)
+                            }
+                        } else if (!voicePath.isNullOrBlank()) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        if (isPlayingQuestionVoice) {
+                                            runCatching { questionPlayer?.stop() }
+                                            runCatching { questionPlayer?.release() }
+                                            questionPlayer = null
+                                            isPlayingQuestionVoice = false
+                                        } else {
+                                            val player = MediaPlayer()
+                                            val started = runCatching {
+                                                player.setDataSource(voicePath)
+                                                player.prepare()
+                                                player.setOnCompletionListener {
+                                                    isPlayingQuestionVoice = false
+                                                    runCatching { player.release() }
+                                                    if (questionPlayer === player) questionPlayer = null
+                                                }
+                                                player.start()
+                                            }.isSuccess
+                                            if (started) {
+                                                questionPlayer = player
+                                                isPlayingQuestionVoice = true
+                                            } else {
+                                                runCatching { player.release() }
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .size(30.dp)
+                                        .clip(CircleShape)
+                                        .background(colors.vermilion)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isPlayingQuestionVoice) Icons.Outlined.Stop else Icons.Outlined.PlayArrow,
+                                        contentDescription = if (isPlayingQuestionVoice) "Stop" else "Play",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                Text(
+                                    text = "Voice Question (0:${state.questionVoiceDurationSec.toString().padStart(2, '0')})",
+                                    fontFamily = JetBrainsMonoFamily,
+                                    fontSize = 11.sp,
+                                    color = colors.inkPrimary
+                                )
+                            }
+                            IconButton(
+                                onClick = {
+                                    runCatching { questionPlayer?.stop() }
+                                    runCatching { questionPlayer?.release() }
+                                    questionPlayer = null
+                                    isPlayingQuestionVoice = false
+                                    runCatching { File(voicePath).delete() }
+                                    onQuestionVoiceChange(null, 0)
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.DeleteOutline,
+                                    contentDescription = "Remove voice question",
+                                    tint = colors.inkSecondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
                     }
                 }
 

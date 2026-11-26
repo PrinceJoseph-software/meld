@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Widgets
@@ -306,6 +307,39 @@ fun SharePopoverSheet(
                         fontSize = 13.sp
                     )
                 }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            OutlinedButton(
+                onClick = {
+                    view.performTactileConfirm()
+                    val exported = PollCardImageExporter.exportAndShare(context, room)
+                    if (!exported) {
+                        Toast.makeText(context, "Unable to export poll card image", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
+                    .testTag("popover_export_card_image_button"),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, colors.vermilion.copy(alpha = 0.45f))
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Image,
+                    contentDescription = null,
+                    tint = colors.vermilion,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Export Poll Card (Image)",
+                    fontFamily = PlusJakartaSansFamily,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp,
+                    color = colors.inkPrimary
+                )
             }
 
             Spacer(modifier = Modifier.height(10.dp))

@@ -50,7 +50,9 @@ data class CreateRoomUiState(
     val newlyAddedOptionId: String? = null,
     val validationMessage: String? = null,
     val joinCodeError: String? = null,
-    val isCreating: Boolean = false
+    val isCreating: Boolean = false,
+    val questionVoicePath: String? = null,
+    val questionVoiceDurationSec: Int = 0
 )
 
 enum class CalendarSyncSource {
@@ -445,6 +447,16 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
         _logoPulseCount.update { it + 1 }
     }
 
+    fun setQuestionVoice(path: String?, durationSec: Int) {
+        _createState.update {
+            it.copy(
+                questionVoicePath = path,
+                questionVoiceDurationSec = durationSec,
+                validationMessage = null
+            )
+        }
+    }
+
     fun createRoom(
         emptyQuestionError: String,
         minOptionsError: String
@@ -452,11 +464,13 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
         val snapshot = _createState.value
         if (snapshot.isCreating) return
 
-        val question = snapshot.question.trim()
-        if (question.isEmpty()) {
+        val typedQuestion = snapshot.question.trim()
+        val hasVoice = !snapshot.questionVoicePath.isNullOrBlank()
+        if (typedQuestion.isEmpty() && !hasVoice) {
             _createState.update { it.copy(validationMessage = emptyQuestionError) }
             return
         }
+        val question = typedQuestion.ifEmpty { "Voice Question" }
 
         val filledOptions = snapshot.options.map { it.text.trim() }.filter { it.isNotEmpty() }
         if (filledOptions.size < 2) {
@@ -475,6 +489,17 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
                 isAnonymous = snapshot.isAnonymous,
                 deadlineMinutes = snapshot.deadlineMinutes
             )
+            val voicePath = snapshot.questionVoicePath
+            if (!voicePath.isNullOrBlank()) {
+                val dur = snapshot.questionVoiceDurationSec.coerceIn(1, 60)
+                repository.addVoiceComment(
+                    roomId = roomId,
+                    optionId = null,
+                    transcript = "Voice Question (0:${dur.toString().padStart(2, '0')})",
+                    durationSeconds = dur,
+                    audioFilePath = voicePath
+                )
+            }
             _activeRoomId.value = roomId
             _logoPulseCount.update { it + 1 }
             _createState.value = CreateRoomUiState(mode = snapshot.mode)
