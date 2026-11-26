@@ -3,9 +3,9 @@ package io.github.princejoseph.meld.ui.screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -175,54 +175,68 @@ fun OnboardingScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    Text(
-                        text = slide.badge,
-                        fontFamily = JetBrainsMonoFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        letterSpacing = 1.2.sp,
-                        color = colors.vermilion
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Text(
-                        text = slide.title,
-                        fontFamily = InstrumentSerifFamily,
-                        fontSize = 32.sp,
-                        lineHeight = 36.sp,
-                        textAlign = TextAlign.Center,
-                        color = colors.inkPrimary
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Text(
-                        text = slide.description,
-                        fontFamily = PlusJakartaSansFamily,
-                        fontSize = 15.sp,
-                        lineHeight = 22.sp,
-                        textAlign = TextAlign.Center,
-                        color = colors.inkSecondary
-                    )
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    Card(
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = colors.surfaceElevated),
-                        border = BorderStroke(1.dp, colors.hairline)
+                    // All slide copy sits on one solid panel so the dot texture never
+                    // runs through the text.
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(colors.surfaceElevated)
+                            .border(1.dp, colors.hairline, RoundedCornerShape(20.dp))
+                            .padding(horizontal = 20.dp, vertical = 22.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = slide.highlight,
-                            fontFamily = PlusJakartaSansFamily,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 12.sp,
-                            lineHeight = 18.sp,
-                            textAlign = TextAlign.Center,
-                            color = colors.inkPrimary,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                            text = slide.badge,
+                            fontFamily = JetBrainsMonoFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            letterSpacing = 1.2.sp,
+                            color = colors.vermilion
                         )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text(
+                            text = slide.title,
+                            fontFamily = InstrumentSerifFamily,
+                            fontSize = 32.sp,
+                            lineHeight = 36.sp,
+                            textAlign = TextAlign.Center,
+                            color = colors.inkPrimary
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Text(
+                            text = slide.description,
+                            fontFamily = PlusJakartaSansFamily,
+                            fontSize = 15.sp,
+                            lineHeight = 22.sp,
+                            textAlign = TextAlign.Center,
+                            color = colors.inkSecondary
+                        )
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(colors.surfaceInset)
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = slide.highlight,
+                                fontFamily = PlusJakartaSansFamily,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 12.sp,
+                                lineHeight = 18.sp,
+                                textAlign = TextAlign.Center,
+                                color = colors.inkPrimary
+                            )
+                        }
                     }
                 }
             }

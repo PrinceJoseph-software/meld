@@ -190,14 +190,21 @@ fun SettingsSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // Full-sheet dot texture; cards below are solid so text never sits on dots.
+                .draftingDotGrid(colors.dotGrid)
                 .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Header
+            // Header (solid panel over the dot texture)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(colors.surfaceElevated)
+                    .border(1.dp, colors.hairline, RoundedCornerShape(16.dp))
+                    .padding(start = 12.dp, top = 10.dp, bottom = 10.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {

@@ -40,8 +40,8 @@ private val LightMeldTokens = MeldColorTokens(
     emerald = WarmEmerald,
     progressFill = WarmVermilion.copy(alpha = 0.10f),
     emeraldFill = WarmEmerald.copy(alpha = 0.12f),
-    // Background texture only: kept quiet so body text on the canvas stays legible.
-    dotGrid = WarmInkSecondary.copy(alpha = 0.16f),
+    // Visible background texture; text sits on solid panels on top of it.
+    dotGrid = WarmInkSecondary.copy(alpha = 0.26f),
     isDark = false
 )
 
@@ -58,7 +58,7 @@ private val DarkMeldTokens = MeldColorTokens(
     emeraldFill = ObsidianEmerald.copy(alpha = 0.16f),
     // Note: Color.copy(alpha = x) REPLACES alpha, it does not multiply it. The previous
     // ObsidianHairline.copy(alpha = 0.65f) produced 65% white dots that fought the text.
-    dotGrid = Color.White.copy(alpha = 0.10f),
+    dotGrid = Color.White.copy(alpha = 0.20f),
     isDark = true
 )
 
