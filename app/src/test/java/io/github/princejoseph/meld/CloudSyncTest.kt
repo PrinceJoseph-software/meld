@@ -176,4 +176,58 @@ class CloudSyncTest {
         dbA.close()
         dbB.close()
     }
+
+    @Test
+    fun `ranked ballots keep their order across devices and runoff decides`() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val server = FakeServer()
+        val identity = IdentityStore(context)
+        val dbA = Room.inMemoryDatabaseBuilder(context, MeldDatabase::class.java).allowMainThreadQueries().build()
+        val dbB = Room.inMemoryDatabaseBuilder(context, MeldDatabase::class.java).allowMainThreadQueries().build()
+        val deviceA = MeldRepository(dbA.meldDao(), identity, remoteSync = FakeGateway(server, "auth-A"))
+        val deviceB = MeldRepository(dbB.meldDao(), identity, remoteSync = FakeGateway(server, "auth-B"))
+
+        val roomId = deviceA.createRoom(
+            question = "Offsite city?",
+            mode = RoomMode.QUICK_POLL,
+            options = listOf(NewOptionSpec("Lisbon"), NewOptionSpec("Oslo"), NewOptionSpec("Rome")),
+            allowMultiple = false,
+            allowFriendsToAdd = false,
+            isRanked = true
+        )
+        eventually { server.rooms[roomId]?.isRanked == true && server.options[roomId].orEmpty().size == 3 }
+        val ids = server.options[roomId]!!.values.associate { it.label to it.id }
+
+        // Device A ranks Rome > Oslo; one vote is queued offline and flushed later.
+        deviceA.toggleVote(roomId, ids.getValue("Rome"), isCurrentlyOnline = true)
+        deviceA.toggleVote(roomId, ids.getValue("Oslo"), isCurrentlyOnline = false)
+        val queued = deviceA.observeRoom(roomId).first()!!
+        assertEquals(1, queued.options.first { it.label == "Rome" }.myRank)
+        assertEquals(2, queued.options.first { it.label == "Oslo" }.myRank)
+        deviceA.flushPendingVotes()
+        eventually { server.ballots[roomId]?.get("auth-A")?.optionIds?.size == 2 }
+        assertEquals(listOf(ids["Rome"], ids["Oslo"]), server.ballots[roomId]!!["auth-A"]!!.optionIds)
+
+        // Two other voters (written straight to the server): Lisbon, Oslo.
+        synchronized(server) {
+            server.ballots[roomId]!!["auth-X"] = RemoteBallot("x", "X", 0, 0, listOf(ids.getValue("Lisbon")), 1)
+            server.ballots[roomId]!!["auth-Y"] = RemoteBallot("y", "Y", 0, 0, listOf(ids.getValue("Oslo")), 1)
+        }
+        server.bump()
+
+        // Device B joins and sees the same runoff result: Rome eliminated, its ballot moves to Oslo.
+        assertTrue(deviceB.fetchRemoteRoom(roomId))
+        val onB = deviceB.observeRoom(roomId).first()!!
+        assertTrue(onB.isRanked)
+        assertEquals("Oslo", onB.options.first().label)
+        assertEquals(2, onB.options.first().voteCount)
+
+        deviceA.mirrorRemoteRoom(roomId).take(1).toList()
+        deviceA.crownWinner(roomId)
+        eventually { server.rooms[roomId]!!.isLocked }
+        assertEquals(ids["Oslo"], server.rooms[roomId]!!.winnerOptionId)
+
+        dbA.close()
+        dbB.close()
+    }
 }

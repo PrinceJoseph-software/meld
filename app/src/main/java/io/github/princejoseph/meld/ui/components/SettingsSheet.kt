@@ -1,5 +1,11 @@
 ﻿package io.github.princejoseph.meld.ui.components
 
+import io.github.princejoseph.meld.data.CalendarWriter
+import androidx.compose.material.icons.outlined.EventAvailable
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
+import android.Manifest
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -114,10 +120,17 @@ fun SettingsSheet(
     onOpenLanguageSelector: () -> Unit,
     onOpenFeatureTour: () -> Unit = {},
     onOpenPrivacyPolicy: () -> Unit = {},
+    autoCalendar: Boolean = false,
+    onToggleAutoCalendar: (Boolean) -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val colors = MeldTheme.colors
     val view = LocalView.current
+    val calendarContext = LocalContext.current
+    // Writing decided slots into the calendar needs WRITE_CALENDAR; ask only when turning it on.
+    val calendarPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> onToggleAutoCalendar(granted) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val initialStdSpec = remember(identity.avatarStyleIndex) {
@@ -1044,6 +1057,65 @@ fun SettingsSheet(
                             onCheckedChange = {
                                 if (it) view.performTactileConfirm()
                                 onToggleHaptics(it)
+                            }
+                        )
+                    }
+
+                    HorizontalDivider(color = colors.hairline)
+
+                    // Auto-add decided time slots to the device calendar
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("settings_auto_calendar_row"),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(colors.surfaceElevated),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.EventAvailable,
+                                    contentDescription = null,
+                                    tint = colors.inkPrimary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = stringResource(R.string.settings_auto_calendar_title),
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp,
+                                    color = colors.inkPrimary
+                                )
+                                Text(
+                                    text = stringResource(R.string.settings_auto_calendar_subtitle),
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontSize = 11.sp,
+                                    color = colors.inkSecondary
+                                )
+                            }
+                        }
+
+                        MeldSpringSwitch(
+                            checked = autoCalendar,
+                            onCheckedChange = { enable ->
+                                if (enable && !CalendarWriter.hasWritePermission(calendarContext)) {
+                                    calendarPermission.launch(Manifest.permission.WRITE_CALENDAR)
+                                } else {
+                                    if (enable) view.performTactileConfirm()
+                                    onToggleAutoCalendar(enable)
+                                }
                             }
                         )
                     }

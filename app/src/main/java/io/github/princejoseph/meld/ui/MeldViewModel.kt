@@ -53,6 +53,8 @@ data class CreateRoomUiState(
     val allowMultiple: Boolean = false,
     val allowFriendsToAdd: Boolean = false,
     val isAnonymous: Boolean = false,
+    val isRanked: Boolean = false,
+    val repeatWeekly: Boolean = false,
     val deadlineMinutes: Int? = null,
     val newlyAddedOptionId: String? = null,
     val validationMessage: String? = null,
@@ -385,6 +387,25 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
         _createState.update { it.copy(isAnonymous = enabled) }
     }
 
+    fun setIsRanked(enabled: Boolean) {
+        // Ranked ballots already hold several options in order; "multiple picks" doesn't apply.
+        _createState.update { it.copy(isRanked = enabled, allowMultiple = if (enabled) false else it.allowMultiple) }
+    }
+
+    fun setRepeatWeekly(enabled: Boolean) {
+        _createState.update { it.copy(repeatWeekly = enabled) }
+    }
+
+    /** Weekly series and integrations need the cloud backend (google-services.json). */
+    val isCloudEnabled: Boolean get() = repository.isCloudEnabled
+
+    val autoCalendar: StateFlow<Boolean> = identityStore.autoCalendarFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    fun setAutoCalendar(enabled: Boolean) {
+        viewModelScope.launch { identityStore.setAutoCalendar(enabled) }
+    }
+
     fun setDeadlineMinutes(minutes: Int?) {
         _createState.update { it.copy(deadlineMinutes = minutes) }
     }
@@ -529,7 +550,9 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
                 allowMultiple = snapshot.allowMultiple,
                 allowFriendsToAdd = snapshot.allowFriendsToAdd,
                 isAnonymous = snapshot.isAnonymous,
-                deadlineMinutes = snapshot.deadlineMinutes
+                deadlineMinutes = snapshot.deadlineMinutes,
+                isRanked = snapshot.isRanked,
+                repeatWeekly = snapshot.repeatWeekly
             )
             val voicePath = snapshot.questionVoicePath
             if (!voicePath.isNullOrBlank()) {

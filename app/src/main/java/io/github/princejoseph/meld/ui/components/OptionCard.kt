@@ -56,6 +56,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -304,6 +306,24 @@ fun OptionCard(
                         contentAlignment = Alignment.Center
                     ) {
                         AnimatedCrownIcon(tint = colors.emerald)
+                    }
+                } else if (option.myRank != null) {
+                    // Ranked choice: show my position for this option (1 = first choice).
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(colors.vermilion)
+                            .semantics { contentDescription = "Your choice number ${option.myRank}" },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = option.myRank.toString(),
+                            fontFamily = JetBrainsMonoFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = Color.White
+                        )
                     }
                 } else {
                     AnimatedCheckmarkBox(

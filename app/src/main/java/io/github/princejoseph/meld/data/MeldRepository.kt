@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -252,7 +253,9 @@ class MeldRepository(
         allowMultiple: Boolean,
         allowFriendsToAdd: Boolean,
         isAnonymous: Boolean = false,
-        deadlineMinutes: Int? = null
+        deadlineMinutes: Int? = null,
+        isRanked: Boolean = false,
+        repeatWeekly: Boolean = false
     ): String = createRoom(
         question = question,
         mode = mode,
@@ -260,7 +263,9 @@ class MeldRepository(
         allowMultiple = allowMultiple,
         allowFriendsToAdd = allowFriendsToAdd,
         isAnonymous = isAnonymous,
-        deadlineMinutes = deadlineMinutes
+        deadlineMinutes = deadlineMinutes,
+        isRanked = isRanked,
+        repeatWeekly = repeatWeekly
     )
 
     @JvmName("createRoomWithSpecs")
@@ -271,7 +276,9 @@ class MeldRepository(
         allowMultiple: Boolean,
         allowFriendsToAdd: Boolean,
         isAnonymous: Boolean = false,
-        deadlineMinutes: Int? = null
+        deadlineMinutes: Int? = null,
+        isRanked: Boolean = false,
+        repeatWeekly: Boolean = false
     ): String {
         val creatorIdentity = identityStore.ensureIdentity()
         val roomId = generateRoomCode()
@@ -284,7 +291,7 @@ class MeldRepository(
             id = roomId,
             question = sanitizeMeldInput(question, maxLength = 200),
             mode = mode.name,
-            allowMultiple = allowMultiple,
+            allowMultiple = allowMultiple && !isRanked,
             allowFriendsToAdd = allowFriendsToAdd,
             isAnonymous = isAnonymous,
             deadlineEpochMs = deadlineMs,
@@ -292,7 +299,11 @@ class MeldRepository(
             winnerOptionId = null,
             isLocked = false,
             createdAtEpochMs = now,
-            expiresAtEpochMs = now + fourteenDaysMs
+            expiresAtEpochMs = now + fourteenDaysMs,
+            isRanked = isRanked,
+            // Weekly series need the cloud scheduler; local-only builds create a normal room.
+            repeatWeekly = repeatWeekly && remoteSync.isEnabled,
+            seriesId = if (repeatWeekly && remoteSync.isEnabled) roomId else null
         )
 
         val optionEntities = options
@@ -359,7 +370,8 @@ class MeldRepository(
             allowMultiple = false,
             allowFriendsToAdd = false,
             isAnonymous = room.isAnonymous,
-            deadlineMinutes = 15
+            deadlineMinutes = 15,
+            isRanked = room.isRanked
         )
     }
 
@@ -513,7 +525,8 @@ class MeldRepository(
                     voterBadgeColorIndex = badgeColor,
                     voterAvatarStyleIndex = avatarStyle,
                     isRemoval = isRemoval,
-                    allowMultiple = room.allowMultiple,
+                    // ranked ballots hold several options, like multi-choice ones
+                    allowMultiple = room.allowMultiple || room.isRanked,
                     createdAtEpochMs = System.currentTimeMillis()
                 )
             )
@@ -537,7 +550,8 @@ class MeldRepository(
             voterUid = identity.uid,
             allowMultiple = room.allowMultiple,
             isRemoval = isRemoval,
-            vote = vote
+            vote = vote,
+            isRanked = room.isRanked
         )
     }
 
@@ -573,7 +587,8 @@ class MeldRepository(
                         voterUid = entry.voterUid,
                         allowMultiple = entry.allowMultiple,
                         isRemoval = entry.isRemoval,
-                        vote = vote
+                        vote = vote,
+                        isRanked = room.isRanked
                     )
                     dao.deletePendingVoteById(entry.id)
                 }
@@ -589,9 +604,12 @@ class MeldRepository(
         voterUid: String,
         allowMultiple: Boolean,
         isRemoval: Boolean,
-        vote: VoteEntity
+        vote: VoteEntity,
+        isRanked: Boolean = false
     ) {
-        if (allowMultiple) {
+        if (isRanked) {
+            dao.applyRankedVote(roomId, optionId, voterUid, isRemoval, vote)
+        } else if (allowMultiple) {
             if (isRemoval) {
                 dao.deleteVote(roomId, optionId, voterUid)
             } else {
@@ -668,17 +686,12 @@ class MeldRepository(
         if (options.isEmpty()) return
         val votes = dao.getVotesOnce(roomId)
 
-        val winnerId = explicitOptionId ?: run {
-            val counts = votes.groupingBy { it.optionId }.eachCount()
-            options.sortedWith(
-                compareByDescending<OptionEntity> { counts[it.id] ?: 0 }
-                    .thenBy { it.sortOrder }
-            ).first().id
-        }
+        val winnerId = explicitOptionId ?: decideWinner(room, options, votes) ?: options.minBy { it.sortOrder }.id
 
         dao.clearPendingVotesForRoom(roomId)
         dao.updateRoomLock(roomId = roomId, isLocked = true, winnerOptionId = winnerId)
         syncRoomState(roomId)
+        onDecided(roomId)
         appContext?.let {
             DeadlineWorkScheduler.cancelForRoom(it, roomId)
             val winnerLabel = options.firstOrNull { opt -> opt.id == winnerId }?.label
@@ -693,6 +706,22 @@ class MeldRepository(
         }
     }
 
+    /**
+     * The winning option: instant runoff for ranked rooms, otherwise most votes (earliest
+     * option on ties). Same rules as the web app and the server.
+     */
+    private fun decideWinner(room: RoomEntity, options: List<OptionEntity>, votes: List<VoteEntity>): String? {
+        if (options.isEmpty() || votes.isEmpty()) return null
+        if (room.isRanked) {
+            return RankedChoice.instantRunoff(options.map { it.id to it.sortOrder }, rankedBallots(votes)).winnerId
+        }
+        val counts = votes.groupingBy { it.optionId }.eachCount()
+        return options.sortedWith(compareByDescending<OptionEntity> { counts[it.id] ?: 0 }.thenBy { it.sortOrder }).first().id
+    }
+
+    private fun rankedBallots(votes: List<VoteEntity>): List<List<String>> =
+        votes.groupBy { it.voterUid }.values.map { vs -> vs.sortedBy { it.rank }.map { it.optionId } }
+
     suspend fun finalizeExpiredRoomIfNeeded(
         roomId: String,
         nowMs: Long = System.currentTimeMillis()
@@ -705,21 +734,12 @@ class MeldRepository(
         val committedVotes = dao.getVotesOnce(roomId)
         val pendingVotes = dao.getAllPendingVotesOnce().filter { it.roomId == roomId }
         val effectiveVotes = applyPendingVotes(committedVotes, pendingVotes)
-        val counts = effectiveVotes.groupingBy { it.optionId }.eachCount()
-        val totalVotes = effectiveVotes.size
-
-        val winnerId = if (totalVotes > 0 && options.isNotEmpty()) {
-            options.sortedWith(
-                compareByDescending<OptionEntity> { counts[it.id] ?: 0 }
-                    .thenBy { it.sortOrder }
-            ).first().id
-        } else {
-            null
-        }
+        val winnerId = decideWinner(room, options, effectiveVotes)
 
         dao.clearPendingVotesForRoom(roomId)
         dao.updateRoomLock(roomId = roomId, isLocked = true, winnerOptionId = winnerId)
         syncRoomState(roomId)
+        onDecided(roomId)
         appContext?.let {
             DeadlineWorkScheduler.cancelForRoom(it, roomId)
             val winnerLabel = options.firstOrNull { opt -> opt.id == winnerId }?.label
@@ -903,8 +923,10 @@ class MeldRepository(
                     working.removeAll { it.optionId == pending.optionId && it.voterUid == pending.voterUid }
                 } else {
                     working.removeAll { it.optionId == pending.optionId && it.voterUid == pending.voterUid }
+                    val nextRank = (working.filter { it.voterUid == pending.voterUid }.maxOfOrNull { it.rank } ?: -1) + 1
                     working.add(
                         VoteEntity(
+                            rank = nextRank,
                             id = "${pending.roomId}:${pending.optionId}:${pending.voterUid}",
                             roomId = pending.roomId,
                             optionId = pending.optionId,
@@ -956,7 +978,28 @@ class MeldRepository(
         val effectiveVotes = applyPendingVotes(data.votes, pendingVotes)
         val pendingOptionIds = pendingVotes.map { it.optionId }.toSet()
         val votesByOption = effectiveVotes.groupBy { it.optionId }
-        val totalVotes = effectiveVotes.size
+        val isRanked = data.room.isRanked
+        val irv = if (isRanked) {
+            RankedChoice.instantRunoff(data.options.map { it.id to it.sortOrder }, rankedBallots(effectiveVotes))
+        } else {
+            null
+        }
+        // Ranked: show final-round counts and each voter under their first choice.
+        val countOf: (String) -> Int = { id -> irv?.finalCounts?.get(id) ?: (votesByOption[id]?.size ?: 0) }
+        val shownVotesByOption = if (isRanked) {
+            effectiveVotes.groupBy { it.voterUid }.values
+                .mapNotNull { vs -> vs.minByOrNull { it.rank } }
+                .groupBy { it.optionId }
+        } else {
+            votesByOption
+        }
+        val myRanks = if (isRanked) {
+            effectiveVotes.filter { it.voterUid == identity.uid }.sortedBy { it.rank }
+                .mapIndexed { idx, v -> v.optionId to idx + 1 }.toMap()
+        } else {
+            emptyMap()
+        }
+        val totalVotes = irv?.finalActive ?: effectiveVotes.size
 
         val uniqueVoterCount = effectiveVotes.distinctBy { it.voterUid }.size
         val activeVoters = effectiveVotes
@@ -992,29 +1035,30 @@ class MeldRepository(
         val sortedOptions = data.options.sortedWith(
             compareByDescending<OptionEntity> {
                 if (data.room.isLocked && data.room.winnerOptionId == it.id) Int.MAX_VALUE
-                else votesByOption[it.id]?.size ?: 0
-            }.thenByDescending { votesByOption[it.id]?.size ?: 0 }
+                else countOf(it.id)
+            }.thenByDescending { countOf(it.id) }
                 .thenBy { it.sortOrder }
         )
 
-        val maxVotes = sortedOptions.maxOfOrNull { votesByOption[it.id]?.size ?: 0 } ?: 0
+        val maxVotes = sortedOptions.maxOfOrNull { countOf(it.id) } ?: 0
         val leaderCount = if (maxVotes > 0) {
-            sortedOptions.count { (votesByOption[it.id]?.size ?: 0) == maxVotes }
+            sortedOptions.count { countOf(it.id) == maxVotes }
         } else {
             0
         }
         val hasTiedLeaders = !effectiveLocked && maxVotes > 0 && leaderCount > 1
 
         val baseUiOptions = sortedOptions.mapIndexed { index, opt ->
-            val optVotes = votesByOption[opt.id].orEmpty()
-            val count = optVotes.size
+            val optVotes = shownVotesByOption[opt.id].orEmpty()
+            val count = countOf(opt.id)
             val pct = if (totalVotes > 0) ((count * 100f) / totalVotes).roundToInt() else 0
             val fraction = if (totalVotes > 0) count.toFloat() / totalVotes.toFloat() else 0f
-            val isVotedByMe = optVotes.any { it.voterUid == identity.uid }
+            val isVotedByMe = votesByOption[opt.id].orEmpty().any { it.voterUid == identity.uid }
             val isWinner = if (data.room.isLocked) {
                 data.room.winnerOptionId == opt.id
             } else {
-                isExpiredByTimer && maxVotes > 0 && index == 0
+                if (irv != null) isExpiredByTimer && opt.id == irv.winnerId
+                else isExpiredByTimer && maxVotes > 0 && index == 0
             }
             val isTied = !effectiveLocked && maxVotes > 0 && count == maxVotes && leaderCount > 1
             val isLeading = !effectiveLocked && maxVotes > 0 && index == 0 && count == maxVotes && leaderCount == 1
@@ -1038,6 +1082,7 @@ class MeldRepository(
                 declinedCount = declinedUids.size,
                 slotStartMs = opt.slotStartMs,
                 slotEndMs = opt.slotEndMs,
+                myRank = myRanks[opt.id],
                 voters = if (data.room.isAnonymous) {
                     optVotes.mapIndexed { vIdx, v ->
                         val isMe = v.voterUid == identity.uid
@@ -1158,7 +1203,13 @@ class MeldRepository(
             maskedNetworkIp = maskedIp,
             isIpVoteLocked = data.room.isAnonymous && anonymousLocks.isNotEmpty(),
             anonymousLockAlert = anonymousLockAlert,
-            voiceComments = uiVoiceComments
+            voiceComments = uiVoiceComments,
+            isRanked = isRanked,
+            rankedRounds = irv?.rounds?.size ?: 0,
+            rankedTie = irv?.tie ?: false,
+            repeatWeekly = data.room.repeatWeekly,
+            seriesId = data.room.seriesId,
+            nextRoomCode = data.room.nextRoomCode
         )
     }
 
@@ -1214,6 +1265,57 @@ class MeldRepository(
         launchSync { remoteSync.deleteVoiceComment(existing.roomId, commentId) }
     }
 
+    // ---- Decision side effects ---------------------------------------------------------
+
+    /**
+     * Asks the server to announce a closed room (webhook / Slack / Discord). The server
+     * re-checks the room and sends at most once, so this is safe to call from every device.
+     */
+    private fun pingDecision(roomId: String) {
+        val base = io.github.princejoseph.meld.BuildConfig.WEB_BASE_URL
+        if (!remoteSync.isEnabled || base.isBlank()) return
+        syncScope.launch {
+            runCatching {
+                val conn = java.net.URL("$base/api/decision").openConnection() as java.net.HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.connectTimeout = 8_000
+                conn.readTimeout = 8_000
+                conn.doOutput = true
+                conn.setRequestProperty("content-type", "application/json")
+                conn.outputStream.use { it.write("{\"code\":\"$roomId\"}".toByteArray()) }
+                conn.responseCode
+                conn.disconnect()
+            }
+        }
+    }
+
+    /** Opt-in: put the winning time slot of a room you took part in into your calendar. */
+    private suspend fun autoAddToCalendarIfEnabled(roomId: String) {
+        val ctx = appContext ?: return
+        if (!identityStore.autoCalendarFlow.first()) return
+        if (!CalendarWriter.hasWritePermission(ctx)) return
+        val room = dao.getRoomOnce(roomId) ?: return
+        if (room.mode != RoomMode.TIME_SLOTS.name) return
+        val closed = room.isLocked || (room.deadlineEpochMs?.let { System.currentTimeMillis() >= it } == true)
+        if (!closed) return
+        val options = dao.getOptionsOnce(roomId)
+        val votes = dao.getVotesOnce(roomId)
+        val winnerId = room.winnerOptionId ?: decideWinner(room, options, votes) ?: return
+        val winner = options.firstOrNull { it.id == winnerId } ?: return
+        val start = winner.slotStartMs ?: ConsensusInsightCalculator.resolveCalendarEventWindowMs(winner.label)?.first ?: return
+        val end = winner.slotEndMs ?: (start + 60L * 60L * 1000L)
+        val me = identityStore.ensureIdentity().uid
+        val tookPart = identityStore.hasValidCreatorToken(roomId, room.creatorToken) || votes.any { it.voterUid == me }
+        if (!tookPart) return
+        if (!identityStore.markCalendarAdded(roomId)) return
+        CalendarWriter.insertEvent(ctx, room.question, start, end, "Decided in Meld: ${winner.label}\nRoom $roomId")
+    }
+
+    private fun onDecided(roomId: String) {
+        pingDecision(roomId)
+        syncScope.launch { runCatching { autoAddToCalendarIfEnabled(roomId) } }
+    }
+
     // ---- Cloud sync ----------------------------------------------------------------------
 
     private suspend fun pushComment(comment: VoiceCommentEntity) {
@@ -1245,8 +1347,9 @@ class MeldRepository(
         val identity = identityStore.ensureIdentity()
         val before = dao.getRoomOnce(snapshot.room.id)
         val votes = snapshot.ballots.flatMap { ballot ->
-            ballot.optionIds.map { optionId ->
+            ballot.optionIds.mapIndexed { rank, optionId ->
                 VoteEntity(
+                    rank = rank,
                     id = "${snapshot.room.id}:$optionId:${ballot.voterUid}",
                     roomId = snapshot.room.id,
                     optionId = optionId,
@@ -1265,6 +1368,10 @@ class MeldRepository(
             comments = snapshot.comments.map { it.comment },
             myUid = identity.uid
         )
+        val wasClosed = before?.isLocked == true
+        val nowClosed = snapshot.room.isLocked ||
+            (snapshot.room.deadlineEpochMs?.let { System.currentTimeMillis() >= it } == true)
+        if (nowClosed && !wasClosed) onDecided(snapshot.room.id)
         val deadline = snapshot.room.deadlineEpochMs
         if (appContext != null && deadline != null && !snapshot.room.isLocked &&
             deadline != before?.deadlineEpochMs
