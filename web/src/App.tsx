@@ -1,13 +1,21 @@
-import { firebaseConfigured } from './firebase';
+import { useEffect } from 'react';
+import { ensureSignedIn, firebaseConfigured } from './firebase';
 import { useOnline, usePath } from './router';
 import { Home } from './pages/Home';
 import { RoomPage } from './pages/Room';
 import { TopBar } from './components/Logo';
 import { sanitizeCode } from './model';
+import { LaunchReveal } from './components/Mark';
 
 export default function App() {
   const path = usePath();
   const online = useOnline();
+
+  // Invisible anonymous sign-in, done once while online on the very first visit. The id is
+  // stored on the device, so every later visit (online or offline) reuses it: no login screen.
+  useEffect(() => {
+    if (firebaseConfigured && online) ensureSignedIn().catch(() => {});
+  }, [online]);
 
   if (!firebaseConfigured) {
     return (
@@ -30,6 +38,7 @@ export default function App() {
 
   return (
     <main className="app">
+      <LaunchReveal />
       {!online && (
         <div className="banner" role="status">
           You're offline. You can keep voting; changes sync when you reconnect.

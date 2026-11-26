@@ -1,1 +1,0 @@
-{"root":["./src/App.tsx","./src/firebase.ts","./src/identity.ts","./src/main.tsx","./src/model.ts","./src/router.ts","./src/components/Avatar.tsx","./src/components/Logo.tsx","./src/components/Qr.tsx","./src/pages/Home.tsx","./src/pages/Room.tsx"],"version":"5.8.3"}

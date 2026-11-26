@@ -1,4 +1,5 @@
 // Local, account-free identity (mirrors the Android IdentityStore). Stored in localStorage.
+import { DEFAULT_MASK_SPEC, javaHash, toPacked } from './avatar';
 
 export const BADGE_COLORS = [
   '#FF451A', '#2563EB', '#0D9488', '#D97706', '#475569', '#7C3AED', '#E11D48', '#0284C7',
@@ -8,7 +9,11 @@ export interface Identity {
   uid: string;
   displayName: string;
   badgeColorIndex: number;
+  /** Packed AvatarSpec (same encoding as Android). */
+  avatarStyle: number;
   maskName: string;
+  anonAvatarStyle: number;
+  anonColorIndex: number;
 }
 
 const KEY = 'meld.identity.v1';
@@ -21,10 +26,22 @@ function safeSet(key: string, value: string) {
   try { localStorage.setItem(key, value); } catch { /* private mode: keep in memory */ }
 }
 
+/** Same defaults Android derives from the uid (badgeColorIndexForUid / avatarStyleIndexForUid). */
 function hashIndex(s: string, mod: number) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h) % mod;
+  return Math.abs(javaHash(s)) % mod;
+}
+
+function withDefaults(raw: Partial<Identity> & { uid: string }): Identity {
+  const uid = raw.uid;
+  return {
+    uid,
+    displayName: raw.displayName ?? '',
+    badgeColorIndex: raw.badgeColorIndex ?? hashIndex(uid, BADGE_COLORS.length),
+    avatarStyle: raw.avatarStyle ?? hashIndex([...uid].reverse().join(''), 10),
+    maskName: raw.maskName ?? `Agent ${hashIndex(uid, 89) + 10}`,
+    anonAvatarStyle: raw.anonAvatarStyle ?? toPacked(DEFAULT_MASK_SPEC),
+    anonColorIndex: raw.anonColorIndex ?? 4,
+  };
 }
 
 let cached: Identity | null = null;
@@ -34,17 +51,14 @@ export function getIdentity(): Identity {
   const raw = safeGet(KEY);
   if (raw) {
     try {
-      cached = JSON.parse(raw) as Identity;
-      return cached;
+      const parsed = JSON.parse(raw) as Partial<Identity>;
+      if (parsed.uid) {
+        cached = withDefaults(parsed as Partial<Identity> & { uid: string });
+        return cached;
+      }
     } catch { /* fall through */ }
   }
-  const uid = crypto.randomUUID();
-  cached = {
-    uid,
-    displayName: '',
-    badgeColorIndex: hashIndex(uid, BADGE_COLORS.length),
-    maskName: `Agent ${hashIndex(uid, 89) + 10}`,
-  };
+  cached = withDefaults({ uid: crypto.randomUUID() });
   safeSet(KEY, JSON.stringify(cached));
   return cached;
 }
@@ -58,7 +72,14 @@ export function saveIdentity(next: Partial<Identity>) {
 }
 
 export function effectiveName(id: Identity, anonymous: boolean) {
-  return anonymous ? id.maskName : id.displayName || 'Guest';
+  return anonymous ? id.maskName || 'Incognito' : id.displayName || 'Guest';
+}
+
+/** The look this device shows in a room: the anonymous mask in anonymous rooms. */
+export function effectiveLook(id: Identity, anonymous: boolean) {
+  return anonymous
+    ? { name: effectiveName(id, true), avatarStyleIndex: id.anonAvatarStyle, badgeColorIndex: id.anonColorIndex }
+    : { name: effectiveName(id, false), avatarStyleIndex: id.avatarStyle, badgeColorIndex: id.badgeColorIndex };
 }
 
 export function clean(raw: string, max: number) {

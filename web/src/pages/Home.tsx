@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { TopBar } from '../components/Logo';
-import { Avatar } from '../components/Avatar';
-import { BADGE_COLORS, forgetRoom, getIdentity, recentRooms, saveIdentity } from '../identity';
+import { GeometricAvatar } from '../components/GeometricAvatar';
+import { AvatarStudio } from '../components/AvatarStudio';
+import { forgetRoom, getIdentity, recentRooms } from '../identity';
 import { createRoom, sanitizeCode, type RoomMode } from '../model';
 import { navigate } from '../router';
 
@@ -24,6 +25,7 @@ function blankOption(): DraftOption {
 
 export function Home() {
   const [identity, setIdentity] = useState(getIdentity());
+  const [studioOpen, setStudioOpen] = useState(false);
   const [code, setCode] = useState('');
   const [joinError, setJoinError] = useState<string | null>(null);
 
@@ -65,7 +67,9 @@ export function Home() {
       });
       navigate(`/r/${room}`);
     } catch {
-      setCreateError("Couldn't create the room. Check your connection and try again.");
+      setCreateError(navigator.onLine
+        ? "Couldn't create the room. Please try again."
+        : 'This device needs to be online once (first visit only) before it can create rooms offline.');
       setCreating(false);
     }
   };
@@ -79,10 +83,10 @@ export function Home() {
         right={
           <button
             className="btn ghost small"
-            onClick={() => (document.getElementById('profile') as HTMLDialogElement).showModal()}
-            aria-label="Edit your name"
+            onClick={() => setStudioOpen(true)}
+            aria-label="Open Avatar Studio"
           >
-            <Avatar name={identity.displayName || 'Guest'} colorIndex={identity.badgeColorIndex} />
+            <GeometricAvatar avatarStyleIndex={identity.avatarStyle} colorIndex={identity.badgeColorIndex} size={28} />
             <span className="truncate" style={{ maxWidth: 120 }}>{identity.displayName || 'Set name'}</span>
           </button>
         }
@@ -229,37 +233,7 @@ export function Home() {
         No account, no ads. <a href="https://github.com/PrinceJoseph-software/meld/blob/main/PRIVACY_POLICY.md">Privacy</a>
       </p>
 
-      <dialog id="profile">
-        <form
-          method="dialog"
-          className="stack"
-          onSubmit={(e) => {
-            const data = new FormData(e.currentTarget);
-            saveIdentity({
-              displayName: String(data.get('name') || ''),
-              maskName: String(data.get('mask') || ''),
-              badgeColorIndex: Number(data.get('color') || 0),
-            });
-            setIdentity(getIdentity());
-          }}
-        >
-          <div className="eyebrow">Your identity</div>
-          <label className="small muted" htmlFor="pname">Display name</label>
-          <input id="pname" name="name" className="input" maxLength={28} defaultValue={identity.displayName} placeholder="Alex" />
-          <label className="small muted" htmlFor="pmask">Anonymous mask name</label>
-          <input id="pmask" name="mask" className="input" maxLength={24} defaultValue={identity.maskName} />
-          <div className="small muted">Colour</div>
-          <div className="chips" role="radiogroup" aria-label="Badge colour">
-            {BADGE_COLORS.map((c, i) => (
-              <label key={c} style={{ cursor: 'pointer' }}>
-                <input type="radio" name="color" value={i} defaultChecked={identity.badgeColorIndex === i} style={{ position: 'absolute', opacity: 0 }} />
-                <span className="avatar" style={{ background: c, margin: 0, width: 32, height: 32 }} aria-label={`Colour ${i + 1}`} />
-              </label>
-            ))}
-          </div>
-          <button className="btn primary block" type="submit">Save</button>
-        </form>
-      </dialog>
+      <AvatarStudio open={studioOpen} onClose={() => setStudioOpen(false)} onSaved={setIdentity} />
     </>
   );
 }
