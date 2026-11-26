@@ -129,11 +129,11 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = null
         )
 
-    val selectedLanguage: StateFlow<String> = identityStore.selectedLanguageFlow
+    val selectedLanguage: StateFlow<String?> = identityStore.selectedLanguageFlow
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
-            initialValue = "en"
+            initialValue = null
         )
 
     val hapticsEnabled: StateFlow<Boolean> = identityStore.hapticsEnabledFlow

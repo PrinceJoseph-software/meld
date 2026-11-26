@@ -116,9 +116,11 @@ class MeldComposeUiTest {
     }
 
     @Test
-    fun `settings sheet anonymous badge studio exposes all 6 customization tabs and saves`() {
-        var savedAvatar = -1
-        var savedColor = -1
+    fun `settings sheet unified studio exposes profile modes, tabs, history, theme, and language`() {
+        var savedStdAvatar = -1
+        var savedStdColor = -1
+        var savedAnonAvatar = -1
+        var savedAnonColor = -1
         var savedMask = ""
 
         val identity = VoterIdentity(
@@ -135,14 +137,22 @@ class MeldComposeUiTest {
             MeldAppTheme {
                 SettingsSheet(
                     identity = identity,
+                    isDarkTheme = false,
                     hapticsEnabled = true,
+                    recentRoomsCount = 2,
+                    currentLanguageCode = "en",
+                    onSaveStandardProfile = { _, avatar, color ->
+                        savedStdAvatar = avatar
+                        savedStdColor = color
+                    },
                     onSaveAnonymousBadge = { avatar, color, mask ->
-                        savedAvatar = avatar
-                        savedColor = color
+                        savedAnonAvatar = avatar
+                        savedAnonColor = color
                         savedMask = mask
                     },
+                    onToggleDarkTheme = {},
                     onToggleHaptics = {},
-                    onOpenStandardAvatarStudio = {},
+                    onOpenHistory = {},
                     onOpenLanguageSelector = {},
                     onDismiss = {}
                 )
@@ -150,20 +160,29 @@ class MeldComposeUiTest {
         }
 
         composeRule.onNodeWithTag("anonymous_badge_studio_card").assertIsDisplayed()
+        composeRule.onNodeWithText("My Profile").assertIsDisplayed()
+        composeRule.onNodeWithText("Anonymous Mask").assertIsDisplayed().performClick()
+
         composeRule.onNodeWithText("Shape").assertIsDisplayed()
         composeRule.onNodeWithText("Palette").assertIsDisplayed().performClick()
         composeRule.onNodeWithContentDescription("Vermilion palette").assertExists()
         composeRule.onNodeWithText("Pattern").assertIsDisplayed().performClick()
-        composeRule.onNodeWithText("Diagonal Stripes").assertIsDisplayed()
-        composeRule.onNodeWithText("Eyes").assertIsDisplayed()
-        composeRule.onNodeWithText("Gear").assertIsDisplayed()
-        composeRule.onNodeWithText("Frame").assertIsDisplayed()
+        composeRule.onNodeWithText("Diagonal Stripes").assertExists()
+        composeRule.onNodeWithText("Eyes").assertExists()
+        composeRule.onNodeWithText("Gear").assertExists()
+        composeRule.onNodeWithText("Frame").assertExists()
+
+        composeRule.onNodeWithTag("settings_history_row").assertExists()
+        composeRule.onNodeWithTag("settings_theme_row").assertExists()
+        composeRule.onNodeWithTag("settings_language_row").assertExists()
 
         composeRule.onNodeWithTag("anon_shuffle_button").performClick()
         composeRule.onNodeWithTag("settings_done_button").performClick()
 
-        assertTrue(savedAvatar >= 0)
-        assertTrue(savedColor >= 0)
+        assertTrue(savedStdAvatar >= 0)
+        assertTrue(savedStdColor >= 0)
+        assertTrue(savedAnonAvatar >= 0)
+        assertTrue(savedAnonColor >= 0)
         assertTrue(savedMask.isNotBlank())
     }
 }

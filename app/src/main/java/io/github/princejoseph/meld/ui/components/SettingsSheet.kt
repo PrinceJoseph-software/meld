@@ -18,9 +18,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Casino
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.rounded.Bolt
@@ -80,6 +81,11 @@ private val MASK_ALIASES = listOf(
     "Shadow", "Ghost", "Enigma", "Mirage", "Nomad"
 )
 
+private enum class BadgeEditorMode {
+    STANDARD,
+    ANONYMOUS
+}
+
 private enum class AnonymousCustomizerTab {
     SHAPES,
     PALETTES,
@@ -93,10 +99,15 @@ private enum class AnonymousCustomizerTab {
 @Composable
 fun SettingsSheet(
     identity: VoterIdentity,
+    isDarkTheme: Boolean,
     hapticsEnabled: Boolean,
+    recentRoomsCount: Int,
+    currentLanguageCode: String,
+    onSaveStandardProfile: (displayName: String, avatarStyleIndex: Int, badgeColorIndex: Int) -> Unit,
     onSaveAnonymousBadge: (avatarStyleIndex: Int, badgeColorIndex: Int, maskName: String) -> Unit,
+    onToggleDarkTheme: () -> Unit,
     onToggleHaptics: (Boolean) -> Unit,
-    onOpenStandardAvatarStudio: () -> Unit,
+    onOpenHistory: () -> Unit,
     onOpenLanguageSelector: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -104,15 +115,55 @@ fun SettingsSheet(
     val view = LocalView.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    val initialSpec = remember(identity.anonymousAvatarStyleIndex) {
+    val initialStdSpec = remember(identity.avatarStyleIndex) {
+        AvatarSpec.fromPacked(identity.avatarStyleIndex)
+    }
+    val initialAnonSpec = remember(identity.anonymousAvatarStyleIndex) {
         AvatarSpec.fromPacked(identity.anonymousAvatarStyleIndex)
     }
 
-    var draftMaskName by remember(identity.anonymousMaskName) { mutableStateOf(identity.anonymousMaskName) }
-    var draftColor by remember(identity.anonymousBadgeColorIndex) {
+    var editorMode by remember { mutableStateOf(BadgeEditorMode.STANDARD) }
+
+    var stdName by remember(identity.displayName) { mutableStateOf(identity.displayName) }
+    var stdColor by remember(identity.badgeColorIndex) {
+        mutableIntStateOf(identity.badgeColorIndex.coerceIn(0, VoterBadgeColors.lastIndex))
+    }
+    var stdSpec by remember(initialStdSpec) { mutableStateOf(initialStdSpec) }
+
+    var anonMaskName by remember(identity.anonymousMaskName) { mutableStateOf(identity.anonymousMaskName) }
+    var anonColor by remember(identity.anonymousBadgeColorIndex) {
         mutableIntStateOf(identity.anonymousBadgeColorIndex.coerceIn(0, VoterBadgeColors.lastIndex))
     }
-    var draftSpec by remember(initialSpec) { mutableStateOf(initialSpec) }
+    var anonSpec by remember(initialAnonSpec) { mutableStateOf(initialAnonSpec) }
+
+    val activeSpec = if (editorMode == BadgeEditorMode.STANDARD) stdSpec else anonSpec
+    val activeColor = if (editorMode == BadgeEditorMode.STANDARD) stdColor else anonColor
+    val activeName = if (editorMode == BadgeEditorMode.STANDARD) stdName else anonMaskName
+
+    fun updateActiveSpec(transform: (AvatarSpec) -> AvatarSpec) {
+        if (editorMode == BadgeEditorMode.STANDARD) {
+            stdSpec = transform(stdSpec)
+        } else {
+            anonSpec = transform(anonSpec)
+        }
+    }
+
+    fun updateActiveColor(newColor: Int) {
+        if (editorMode == BadgeEditorMode.STANDARD) {
+            stdColor = newColor
+        } else {
+            anonColor = newColor
+        }
+    }
+
+    fun updateActiveName(newName: String) {
+        if (editorMode == BadgeEditorMode.STANDARD) {
+            stdName = newName.take(28)
+        } else {
+            anonMaskName = newName.take(24)
+        }
+    }
+
     var activeTab by remember { mutableStateOf(AnonymousCustomizerTab.SHAPES) }
     var testPushPulse by remember { mutableIntStateOf(0) }
 
@@ -180,7 +231,8 @@ fun SettingsSheet(
                 TextButton(
                     onClick = {
                         view.performTactileConfirm()
-                        onSaveAnonymousBadge(draftSpec.toPacked(), draftColor, draftMaskName)
+                        onSaveStandardProfile(stdName, stdSpec.toPacked(), stdColor)
+                        onSaveAnonymousBadge(anonSpec.toPacked(), anonColor, anonMaskName)
                         onDismiss()
                     },
                     modifier = Modifier.testTag("settings_done_button")
@@ -216,14 +268,22 @@ fun SettingsSheet(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = stringResource(R.string.settings_anon_badge_title),
+                                text = if (editorMode == BadgeEditorMode.STANDARD) {
+                                    stringResource(R.string.avatar_studio_title)
+                                } else {
+                                    stringResource(R.string.settings_anon_badge_title)
+                                },
                                 fontFamily = JetBrainsMonoFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
                                 color = colors.inkPrimary
                             )
                             Text(
-                                text = stringResource(R.string.settings_anon_badge_subtitle),
+                                text = if (editorMode == BadgeEditorMode.STANDARD) {
+                                    "Customize your public avatar and display name"
+                                } else {
+                                    stringResource(R.string.settings_anon_badge_subtitle)
+                                },
                                 fontFamily = PlusJakartaSansFamily,
                                 fontSize = 11.sp,
                                 color = colors.inkSecondary
@@ -233,15 +293,18 @@ fun SettingsSheet(
                         OutlinedButton(
                             onClick = {
                                 view.performTactileConfirm()
-                                draftSpec = AvatarSpec(
+                                val randomSpec = AvatarSpec(
                                     chassis = Random.nextInt(AvatarSpec.CHASSIS_COUNT),
                                     eyes = Random.nextInt(AvatarSpec.EYES_COUNT),
                                     accessory = Random.nextInt(AvatarSpec.ACCESSORY_COUNT),
                                     pattern = Random.nextInt(AvatarSpec.PATTERN_COUNT),
                                     frame = Random.nextInt(AvatarSpec.FRAME_COUNT)
                                 )
-                                draftColor = Random.nextInt(VoterBadgeColors.size)
-                                draftMaskName = MASK_ALIASES.random()
+                                updateActiveSpec { randomSpec }
+                                updateActiveColor(Random.nextInt(VoterBadgeColors.size))
+                                if (editorMode == BadgeEditorMode.ANONYMOUS) {
+                                    updateActiveName(MASK_ALIASES.random())
+                                }
                                 testPushPulse += 1
                             },
                             modifier = Modifier
@@ -268,6 +331,41 @@ fun SettingsSheet(
                         }
                     }
 
+                    // Mode Switcher: My Profile (Standard) vs Anonymous Mask
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(colors.surfaceElevated)
+                            .padding(3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        BadgeEditorMode.values().forEach { mode ->
+                            val selected = editorMode == mode
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (selected) colors.vermilion else Color.Transparent)
+                                    .clickable {
+                                        view.performTactileTick()
+                                        editorMode = mode
+                                        testPushPulse += 1
+                                    }
+                                    .padding(vertical = 7.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (mode == BadgeEditorMode.STANDARD) "My Profile" else "Anonymous Mask",
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                    fontSize = 12.sp,
+                                    color = if (selected) Color.White else colors.inkSecondary
+                                )
+                            }
+                        }
+                    }
+
                     // Live Interactive Stage
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -275,8 +373,8 @@ fun SettingsSheet(
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         GeometricAvatar(
-                            avatarStyleIndex = draftSpec.toPacked(),
-                            colorIndex = draftColor,
+                            avatarStyleIndex = activeSpec.toPacked(),
+                            colorIndex = activeColor,
                             size = 80.dp,
                             borderColor = colors.surfaceElevated,
                             reactionTrigger = testPushPulse,
@@ -288,7 +386,7 @@ fun SettingsSheet(
                             modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            // Mask name field
+                            // Name / Mask name field
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -299,17 +397,21 @@ fun SettingsSheet(
                                     .padding(horizontal = 12.dp, vertical = 8.dp),
                                 contentAlignment = Alignment.CenterStart
                             ) {
-                                if (draftMaskName.isEmpty()) {
+                                if (activeName.isEmpty()) {
                                     Text(
-                                        text = stringResource(R.string.settings_anon_mask_hint),
+                                        text = if (editorMode == BadgeEditorMode.STANDARD) {
+                                            "Display name (e.g. Alex)"
+                                        } else {
+                                            stringResource(R.string.settings_anon_mask_hint)
+                                        },
                                         fontFamily = PlusJakartaSansFamily,
                                         fontSize = 13.sp,
                                         color = colors.inkSecondary.copy(alpha = 0.6f)
                                     )
                                 }
                                 BasicTextField(
-                                    value = draftMaskName,
-                                    onValueChange = { draftMaskName = it.take(24) },
+                                    value = activeName,
+                                    onValueChange = { updateActiveName(it) },
                                     singleLine = true,
                                     textStyle = TextStyle(
                                         fontFamily = PlusJakartaSansFamily,
@@ -417,7 +519,7 @@ fun SettingsSheet(
                                     contentPadding = PaddingValues(vertical = 4.dp)
                                 ) {
                                     itemsIndexed(SHAPE_LABELS) { index, label ->
-                                        val isSelected = draftSpec.chassis == index
+                                        val isSelected = activeSpec.chassis == index
                                         Row(
                                             modifier = Modifier
                                                 .clip(RoundedCornerShape(10.dp))
@@ -425,7 +527,7 @@ fun SettingsSheet(
                                                 .border(1.dp, if (isSelected) colors.vermilion else colors.hairline, RoundedCornerShape(10.dp))
                                                 .clickable {
                                                     view.performTactileTick()
-                                                    draftSpec = draftSpec.copy(chassis = index)
+                                                    updateActiveSpec { it.copy(chassis = index) }
                                                     testPushPulse += 1
                                                 }
                                                 .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -433,8 +535,8 @@ fun SettingsSheet(
                                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
                                             GeometricAvatar(
-                                                avatarStyleIndex = draftSpec.copy(chassis = index).toPacked(),
-                                                colorIndex = draftColor,
+                                                avatarStyleIndex = activeSpec.copy(chassis = index).toPacked(),
+                                                colorIndex = activeColor,
                                                 size = 24.dp,
                                                 borderColor = Color.Transparent
                                             )
@@ -463,7 +565,7 @@ fun SettingsSheet(
                                     contentPadding = PaddingValues(vertical = 4.dp)
                                 ) {
                                     itemsIndexed(VoterBadgeColors) { index, swatch ->
-                                        val isSelected = draftColor == index
+                                        val isSelected = activeColor == index
                                         val paletteName = PALETTE_NAMES.getOrElse(index) { "Color ${index + 1}" }
                                         Box(
                                             modifier = Modifier
@@ -484,7 +586,7 @@ fun SettingsSheet(
                                                 }
                                                 .clickable {
                                                     view.performTactileTick()
-                                                    draftColor = index
+                                                    updateActiveColor(index)
                                                     testPushPulse += 1
                                                 },
                                             contentAlignment = Alignment.Center
@@ -515,7 +617,7 @@ fun SettingsSheet(
                                     contentPadding = PaddingValues(vertical = 4.dp)
                                 ) {
                                     itemsIndexed(PATTERN_LABELS) { index, label ->
-                                        val isSelected = draftSpec.pattern == index
+                                        val isSelected = activeSpec.pattern == index
                                         Row(
                                             modifier = Modifier
                                                 .clip(RoundedCornerShape(10.dp))
@@ -523,7 +625,7 @@ fun SettingsSheet(
                                                 .border(1.dp, if (isSelected) colors.vermilion else colors.hairline, RoundedCornerShape(10.dp))
                                                 .clickable {
                                                     view.performTactileTick()
-                                                    draftSpec = draftSpec.copy(pattern = index)
+                                                    updateActiveSpec { it.copy(pattern = index) }
                                                     testPushPulse += 1
                                                 }
                                                 .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -531,8 +633,8 @@ fun SettingsSheet(
                                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
                                             GeometricAvatar(
-                                                avatarStyleIndex = draftSpec.copy(pattern = index).toPacked(),
-                                                colorIndex = draftColor,
+                                                avatarStyleIndex = activeSpec.copy(pattern = index).toPacked(),
+                                                colorIndex = activeColor,
                                                 size = 24.dp,
                                                 borderColor = Color.Transparent
                                             )
@@ -561,7 +663,7 @@ fun SettingsSheet(
                                     contentPadding = PaddingValues(vertical = 4.dp)
                                 ) {
                                     itemsIndexed(listOf("Dots", "Wink", "Happy", "Star", "Scanner", "Focused")) { index, label ->
-                                        val isSelected = draftSpec.eyes == index
+                                        val isSelected = activeSpec.eyes == index
                                         Box(
                                             modifier = Modifier
                                                 .clip(RoundedCornerShape(8.dp))
@@ -569,7 +671,7 @@ fun SettingsSheet(
                                                 .border(1.dp, colors.hairline, RoundedCornerShape(8.dp))
                                                 .clickable {
                                                     view.performTactileTick()
-                                                    draftSpec = draftSpec.copy(eyes = index)
+                                                    updateActiveSpec { it.copy(eyes = index) }
                                                     testPushPulse += 1
                                                 }
                                                 .padding(horizontal = 12.dp, vertical = 6.dp)
@@ -598,7 +700,7 @@ fun SettingsSheet(
                                     contentPadding = PaddingValues(vertical = 4.dp)
                                 ) {
                                     itemsIndexed(ACCESSORY_LABELS) { index, label ->
-                                        val isSelected = draftSpec.accessory == index
+                                        val isSelected = activeSpec.accessory == index
                                         Row(
                                             modifier = Modifier
                                                 .clip(RoundedCornerShape(10.dp))
@@ -606,7 +708,7 @@ fun SettingsSheet(
                                                 .border(1.dp, if (isSelected) colors.vermilion else colors.hairline, RoundedCornerShape(10.dp))
                                                 .clickable {
                                                     view.performTactileTick()
-                                                    draftSpec = draftSpec.copy(accessory = index)
+                                                    updateActiveSpec { it.copy(accessory = index) }
                                                     testPushPulse += 1
                                                 }
                                                 .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -614,8 +716,8 @@ fun SettingsSheet(
                                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
                                             GeometricAvatar(
-                                                avatarStyleIndex = draftSpec.copy(accessory = index).toPacked(),
-                                                colorIndex = draftColor,
+                                                avatarStyleIndex = activeSpec.copy(accessory = index).toPacked(),
+                                                colorIndex = activeColor,
                                                 size = 24.dp,
                                                 borderColor = Color.Transparent
                                             )
@@ -644,7 +746,7 @@ fun SettingsSheet(
                                     contentPadding = PaddingValues(vertical = 4.dp)
                                 ) {
                                     itemsIndexed(FRAME_LABELS) { index, label ->
-                                        val isSelected = draftSpec.frame == index
+                                        val isSelected = activeSpec.frame == index
                                         Row(
                                             modifier = Modifier
                                                 .clip(RoundedCornerShape(10.dp))
@@ -652,7 +754,7 @@ fun SettingsSheet(
                                                 .border(1.dp, if (isSelected) colors.vermilion else colors.hairline, RoundedCornerShape(10.dp))
                                                 .clickable {
                                                     view.performTactileTick()
-                                                    draftSpec = draftSpec.copy(frame = index)
+                                                    updateActiveSpec { it.copy(frame = index) }
                                                     testPushPulse += 1
                                                 }
                                                 .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -660,8 +762,8 @@ fun SettingsSheet(
                                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
                                             GeometricAvatar(
-                                                avatarStyleIndex = draftSpec.copy(frame = index).toPacked(),
-                                                colorIndex = draftColor,
+                                                avatarStyleIndex = activeSpec.copy(frame = index).toPacked(),
+                                                colorIndex = activeColor,
                                                 size = 24.dp,
                                                 borderColor = Color.Transparent
                                             )
@@ -701,16 +803,17 @@ fun SettingsSheet(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    // Standard Avatar Studio Shortcut
+                    // Room History
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
                             .clickable {
                                 onDismiss()
-                                onOpenStandardAvatarStudio()
+                                onOpenHistory()
                             }
-                            .padding(vertical = 6.dp),
+                            .padding(vertical = 6.dp)
+                            .testTag("settings_history_row"),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
@@ -719,27 +822,27 @@ fun SettingsSheet(
                                 modifier = Modifier
                                     .size(36.dp)
                                     .clip(CircleShape)
-                                    .background(colors.surfaceElevated),
+                                    .background(colors.vermilion.copy(alpha = 0.12f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                GeometricAvatar(
-                                    avatarStyleIndex = identity.avatarStyleIndex,
-                                    colorIndex = identity.badgeColorIndex,
-                                    size = 28.dp,
-                                    borderColor = colors.surfaceElevated
+                                Icon(
+                                    imageVector = Icons.Outlined.History,
+                                    contentDescription = null,
+                                    tint = colors.vermilion,
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = "Standard Voter Profile",
+                                    text = stringResource(R.string.cd_open_history),
                                     fontFamily = PlusJakartaSansFamily,
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 14.sp,
                                     color = colors.inkPrimary
                                 )
                                 Text(
-                                    text = "${identity.effectiveName} • 67k+ Bauhaus Combos",
+                                    text = if (recentRoomsCount == 1) "1 saved room" else "$recentRoomsCount saved rooms",
                                     fontFamily = PlusJakartaSansFamily,
                                     fontSize = 12.sp,
                                     color = colors.inkSecondary
@@ -747,7 +850,7 @@ fun SettingsSheet(
                             }
                         }
                         Text(
-                            text = "Edit",
+                            text = "View",
                             fontFamily = PlusJakartaSansFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
@@ -757,7 +860,63 @@ fun SettingsSheet(
 
                     HorizontalDivider(color = colors.hairline)
 
+                    // Dark / Light Appearance Toggle
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("settings_theme_row"),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(colors.surfaceElevated),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isDarkTheme) Icons.Outlined.DarkMode else Icons.Outlined.LightMode,
+                                    contentDescription = null,
+                                    tint = colors.inkPrimary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Appearance",
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp,
+                                    color = colors.inkPrimary
+                                )
+                                Text(
+                                    text = if (isDarkTheme) "Obsidian Dark" else "Warm Archival Paper",
+                                    fontFamily = PlusJakartaSansFamily,
+                                    fontSize = 12.sp,
+                                    color = colors.inkSecondary
+                                )
+                            }
+                        }
+
+                        MeldSpringSwitch(
+                            checked = isDarkTheme,
+                            onCheckedChange = {
+                                view.performTactileTick()
+                                onToggleDarkTheme()
+                            }
+                        )
+                    }
+
+                    HorizontalDivider(color = colors.hairline)
+
                     // Language Selector
+                    val activeLangItem = SUPPORTED_LANGUAGES.firstOrNull { currentLanguageCode.startsWith(it.code) }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -766,7 +925,8 @@ fun SettingsSheet(
                                 onDismiss()
                                 onOpenLanguageSelector()
                             }
-                            .padding(vertical = 6.dp),
+                            .padding(vertical = 6.dp)
+                            .testTag("settings_language_row"),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
@@ -795,7 +955,7 @@ fun SettingsSheet(
                                     color = colors.inkPrimary
                                 )
                                 Text(
-                                    text = "18 localized language packs available",
+                                    text = activeLangItem?.let { "${it.nativeName} (${it.EnglishName})" } ?: "English",
                                     fontFamily = PlusJakartaSansFamily,
                                     fontSize = 12.sp,
                                     color = colors.inkSecondary

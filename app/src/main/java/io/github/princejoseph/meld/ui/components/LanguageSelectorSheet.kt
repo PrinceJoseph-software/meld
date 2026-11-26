@@ -123,10 +123,10 @@ fun LanguageSelectorSheet(
                                 shape = RoundedCornerShape(12.dp)
                             )
                             .clickable {
+                                onSelectLanguage(lang.code)
                                 AppCompatDelegate.setApplicationLocales(
                                     LocaleListCompat.forLanguageTags(lang.code)
                                 )
-                                onSelectLanguage(lang.code)
                                 onDismiss()
                             }
                             .padding(horizontal = 16.dp, vertical = 14.dp),

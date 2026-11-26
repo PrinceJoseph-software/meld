@@ -2,11 +2,11 @@
 
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import androidx.compose.animation.AnimatedContent
@@ -35,8 +35,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -72,12 +70,10 @@ import androidx.compose.ui.util.lerp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.princejoseph.meld.ui.MeldViewModel
 import io.github.princejoseph.meld.ui.components.AvatarStudioSheet
-import io.github.princejoseph.meld.ui.components.GeometricAvatar
 import io.github.princejoseph.meld.ui.components.HistorySheet
 import io.github.princejoseph.meld.ui.components.LanguageSelectorSheet
 import io.github.princejoseph.meld.ui.components.MeldLogo
 import io.github.princejoseph.meld.ui.components.SettingsSheet
-import io.github.princejoseph.meld.ui.components.ThemeToggle
 import io.github.princejoseph.meld.ui.components.performTactileTick
 import io.github.princejoseph.meld.ui.screens.CreateRoomScreen
 import io.github.princejoseph.meld.ui.screens.DecisionRoomScreen
@@ -91,7 +87,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.cos
 import kotlin.math.sin
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     private val viewModel: MeldViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -162,9 +158,10 @@ private fun MeldAppShell(
     val hapticsEnabled by viewModel.hapticsEnabled.collectAsStateWithLifecycle()
 
     LaunchedEffect(selectedLang) {
+        val lang = selectedLang ?: return@LaunchedEffect
         val current = AppCompatDelegate.getApplicationLocales().toLanguageTags()
-        if (!current.startsWith(selectedLang)) {
-            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(selectedLang))
+        if (current.isEmpty() || !current.startsWith(lang)) {
+            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(lang))
         }
     }
 
@@ -185,7 +182,7 @@ private fun MeldAppShell(
             .statusBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Minimal 56dp Top Bar: MeldLogo left, History + Sun/Moon ThemeToggle right
+            // Minimal 56dp Top Bar: MeldLogo left, unified Settings button right
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -204,85 +201,7 @@ private fun MeldAppShell(
                     modifier = Modifier.alpha(if (launchRevealFinished) 1f else 0f)
                 )
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    val openStudioCd = stringResource(R.string.avatar_studio_title)
-                    IconButton(
-                        onClick = {
-                            view.performTactileTick()
-                            showTopAvatarStudio = true
-                        },
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(colors.surfaceElevated)
-                            .border(1.dp, colors.hairline, CircleShape)
-                            .semantics { contentDescription = openStudioCd }
-                            .testTag("top_avatar_studio_button")
-                    ) {
-                        GeometricAvatar(
-                            avatarStyleIndex = identity.avatarStyleIndex,
-                            colorIndex = identity.badgeColorIndex,
-                            size = 28.dp,
-                            borderColor = colors.surfaceElevated,
-                            reactionTrigger = identity.avatarStyleIndex + identity.badgeColorIndex
-                        )
-                    }
-
-                    Box {
-                        IconButton(
-                            onClick = {
-                                view.performTactileTick()
-                                showHistorySheet = true
-                            },
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(colors.surfaceElevated)
-                                .border(1.dp, colors.hairline, CircleShape)
-                                .testTag("history_top_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.History,
-                                contentDescription = stringResource(R.string.cd_open_history),
-                                tint = colors.inkPrimary,
-                                modifier = Modifier.size(19.dp)
-                            )
-                        }
-                        if (recentRooms.isNotEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(top = 8.dp, end = 8.dp)
-                                    .size(7.dp)
-                                    .clip(CircleShape)
-                                    .background(colors.vermilion)
-                            )
-                        }
-                    }
-
-                    IconButton(
-                        onClick = {
-                            view.performTactileTick()
-                            showLanguageSheet = true
-                        },
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(colors.surfaceElevated)
-                            .border(1.dp, colors.hairline, CircleShape)
-                            .testTag("language_top_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Language,
-                            contentDescription = "Change Language",
-                            tint = colors.inkPrimary,
-                            modifier = Modifier.size(19.dp)
-                        )
-                    }
-
+                Box {
                     IconButton(
                         onClick = {
                             view.performTactileTick()
@@ -299,14 +218,19 @@ private fun MeldAppShell(
                             imageVector = Icons.Outlined.Settings,
                             contentDescription = stringResource(R.string.settings_title),
                             tint = colors.inkPrimary,
-                            modifier = Modifier.size(19.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
-
-                    ThemeToggle(
-                        isDark = isDark,
-                        onToggle = { viewModel.toggleTheme(isDark) }
-                    )
+                    if (recentRooms.isNotEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = 8.dp, end = 8.dp)
+                                .size(7.dp)
+                                .clip(CircleShape)
+                                .background(colors.vermilion)
+                        )
+                    }
                 }
             }
 
@@ -421,10 +345,15 @@ private fun MeldAppShell(
     if (showSettingsSheet) {
         SettingsSheet(
             identity = identity,
+            isDarkTheme = isDark,
             hapticsEnabled = hapticsEnabled,
+            recentRoomsCount = recentRooms.size,
+            currentLanguageCode = selectedLang ?: "en",
+            onSaveStandardProfile = viewModel::updateVoterProfile,
             onSaveAnonymousBadge = viewModel::updateAnonymousBadge,
+            onToggleDarkTheme = { viewModel.toggleTheme(isDark) },
             onToggleHaptics = viewModel::setHapticsEnabled,
-            onOpenStandardAvatarStudio = { showTopAvatarStudio = true },
+            onOpenHistory = { showHistorySheet = true },
             onOpenLanguageSelector = { showLanguageSheet = true },
             onDismiss = { showSettingsSheet = false }
         )
