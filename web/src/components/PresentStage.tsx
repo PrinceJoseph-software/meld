@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { GeometricAvatar } from './GeometricAvatar';
 import { Qr } from './Qr';
 import type { ArenaOption } from './Arena';
+import { t } from '../i18n';
 
 /**
  * Port of LivePresentStageModal: a distraction-free full-screen stage for screen sharing
@@ -30,14 +31,14 @@ export function PresentStage({ question, code, url, options, total, winnerId, on
   }, []);
 
   return (
-    <div ref={ref} className="stage" role="dialog" aria-label="Present mode">
+    <div ref={ref} className="stage" role="dialog" aria-label={t('present.aria')}>
       <div className="stage-head">
         <div className="grow">
-          <div className="eyebrow">Live · {total} vote{total === 1 ? '' : 's'}</div>
+          <div className="eyebrow">{t('present.live', { count: total })}</div>
           <h1 className="stage-title">{question}</h1>
         </div>
         <div className="stage-qr">
-          <Qr value={url} label={`QR code for room ${code}`} />
+          <Qr value={url} label={t('share.qr', { code })} />
           <div className="mono" style={{ fontSize: 22, letterSpacing: '0.2em', textAlign: 'center', marginTop: 8 }}>{code}</div>
         </div>
       </div>
@@ -58,7 +59,7 @@ export function PresentStage({ question, code, url, options, total, winnerId, on
           );
         })}
       </div>
-      <button className="btn small stage-close" onClick={onClose}>Exit present mode</button>
+      <button className="btn small stage-close" onClick={onClose}>{t('present.exit')}</button>
     </div>
   );
 }

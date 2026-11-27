@@ -28,6 +28,7 @@ import {
   type RoomState,
 } from '../model';
 import { navigate, useNow } from '../router';
+import { list, t, tr } from '../i18n';
 
 function formatRemaining(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -52,8 +53,8 @@ export function RoomPage({ code, embedded = false }: { code: string | null; embe
     if (token) {
       history.replaceState(null, '', location.pathname);
       claimRoom(code, token)
-        .then((ok) => setClaimMsg(ok ? 'You now manage this poll from this device.' : 'That manage link was already used or is invalid.'))
-        .catch(() => setClaimMsg("Couldn't claim the poll. Are you online?"));
+        .then((ok) => setClaimMsg(ok ? t('room.claimOk') : t('room.claimUsed')))
+        .catch(() => setClaimMsg(t('room.claimFail')));
     }
     return watchRoom(
       code,
@@ -71,10 +72,10 @@ export function RoomPage({ code, embedded = false }: { code: string | null; embe
       <>
         {!embedded && <TopBar />}
         <section className="panel">
-          <div className="eyebrow">Room not found</div>
-          <h1 className="title">That code doesn't exist</h1>
-          <p className="muted">Check the code with whoever shared it.</p>
-          {!embedded && <button className="btn primary" onClick={() => navigate('/app')}>Back home</button>}
+          <div className="eyebrow">{t('room.notFoundEyebrow')}</div>
+          <h1 className="title">{t('room.notFoundTitle')}</h1>
+          <p className="muted">{t('room.notFoundBody')}</p>
+          {!embedded && <button className="btn primary" onClick={() => navigate('/app')}>{t('room.backHome')}</button>}
         </section>
       </>
     );
@@ -85,7 +86,7 @@ export function RoomPage({ code, embedded = false }: { code: string | null; embe
         {!embedded && <TopBar />}
         <section className="panel" aria-busy="true">
           <div className="eyebrow mono">{code}</div>
-          <p className="muted">{error ? `Couldn't load this room. ${navigator.onLine ? '' : "You're offline and it isn't saved on this device yet."}` : 'Loading room…'}</p>
+          <p className="muted">{error ? `${t('room.loadFail')} ${navigator.onLine ? '' : t('room.loadFailOffline')}` : t('room.loading')}</p>
         </section>
       </>
     );
@@ -163,7 +164,7 @@ function RoomView({ state, authUid, embedded }: { state: RoomState; authUid: str
     .map((b) => ({ key: b.authUid, name: b.voterName, avatarStyleIndex: b.avatarStyleIndex ?? 0, colorIndex: b.badgeColorIndex }));
   const arenaOptions: ArenaOption[] = sorted.map((o) => ({ id: o.id, label: o.label, count: counts[o.id] ?? 0, voters: votersFor(o.id) }));
   const myLook = effectiveLook(getIdentity(), room.isAnonymous);
-  const howToVote = ranked ? 'rank in order of preference' : room.allowMultiple ? 'pick any' : 'pick one';
+  const howToVote = ranked ? t('room.howRanked') : room.allowMultiple ? t('room.howMulti') : t('room.howOne');
 
   return (
     <>
@@ -171,9 +172,9 @@ function RoomView({ state, authUid, embedded }: { state: RoomState; authUid: str
         <TopBar
           right={
             <div className="row" style={{ gap: 6 }}>
-              <button className="btn small ghost" onClick={() => setPresenting(true)} aria-label="Present full screen">Present</button>
+              <button className="btn small ghost" onClick={() => setPresenting(true)} aria-label={t('room.presentAria')}>{t('room.present')}</button>
               <button className="btn small" onClick={() => setShareOpen((v) => !v)} aria-expanded={shareOpen}>
-                Share <span className="mono">{room.code}</span>
+                {t('room.share')} <span className="mono">{room.code}</span>
               </button>
             </div>
           }
@@ -194,7 +195,7 @@ function RoomView({ state, authUid, embedded }: { state: RoomState; authUid: str
 
       {room.nextRoomCode && (
         <a className="banner row between" href={`/r/${room.nextRoomCode}`} onClick={(e) => { if (!embedded) { e.preventDefault(); navigate(`/r/${room.nextRoomCode}`); } }} style={{ textDecoration: 'none' }}>
-          <span><strong>This week's poll is open.</strong> This one is from last week.</span>
+          <span><strong>{t('room.nextOpen')}</strong> {t('room.nextOld')}</span>
           <span className="accent mono">{room.nextRoomCode} ›</span>
         </a>
       )}
@@ -204,19 +205,19 @@ function RoomView({ state, authUid, embedded }: { state: RoomState; authUid: str
       <section className="panel">
         <div className="row between">
           <span className="eyebrow">
-            {room.mode === 'TIME_SLOTS' ? 'Time slots' : 'Quick poll'}{ranked ? ' · ranked' : ''}{room.isAnonymous ? ' · anonymous' : ''}{room.seriesId ? ' · weekly' : ''}
+            {room.mode === 'TIME_SLOTS' ? t('mode.timeSlots') : t('mode.quickPoll')}{ranked ? ` · ${t('tag.ranked')}` : ''}{room.isAnonymous ? ` · ${t('tag.anonymous')}` : ''}{room.seriesId ? ` · ${t('tag.weekly')}` : ''}
           </span>
           <Status room={room} open={open} now={now} synced={!state.fromCache && !state.hasPendingWrites} />
         </div>
         <h1 className="title">{room.question}</h1>
         <p className="small muted" style={{ margin: 0 }}>
-          {ballots.length} voter{ballots.length === 1 ? '' : 's'} · {howToVote}
-          {open && (ranked ? ' · tap options in order, tap again to remove' : ' · swipe → to vote, ← to drop')}
+          {t('room.voters', { count: ballots.length })} · {howToVote}
+          {open && ` · ${ranked ? t('room.hintRanked') : t('room.hintSwipe')}`}
         </p>
         <div className="row" style={{ marginTop: 12, gap: 10 }}>
           <GeometricAvatar avatarStyleIndex={myLook.avatarStyleIndex} colorIndex={myLook.badgeColorIndex} size={36} reactionTrigger={myPulse} pushBias={myBallot ? 1 : 0} />
           <span className="small">
-            You're voting as <strong>{myLook.name}</strong>{room.isAnonymous && <span className="muted"> (mask)</span>}
+            {tr('room.votingAs', { name: <strong>{myLook.name}</strong> })}{room.isAnonymous && <span className="muted"> {t('room.mask')}</span>}
           </span>
         </div>
         {open && room.deadlineEpochMs != null && (
@@ -226,11 +227,11 @@ function RoomView({ state, authUid, embedded }: { state: RoomState; authUid: str
 
       {!embedded && <PushArena options={arenaOptions} total={total} locked={!open} winnerId={winnerId} />}
 
-      <section className="panel stack" aria-label="Options">
+      <section className="panel stack" aria-label={t('room.options')}>
         {ranked && myRanking.length > 0 && (
           <div className="ranking row between small">
-            <span>Your ranking: {myRanking.map((id, i) => <span key={id} className="mono">{i > 0 ? ' › ' : ''}{i + 1}. {labelOf(id)}</span>)}</span>
-            {open && <button className="btn small ghost" onClick={() => setMyBallot(room, [])}>Clear</button>}
+            <span>{t('room.yourRanking')} {myRanking.map((id, i) => <span key={id} className="mono">{i > 0 ? ' › ' : ''}{i + 1}. {labelOf(id)}</span>)}</span>
+            {open && <button className="btn small ghost" onClick={() => setMyBallot(room, [])}>{t('common.clear')}</button>}
           </div>
         )}
         {sorted.map((o) => {
@@ -254,12 +255,12 @@ function RoomView({ state, authUid, embedded }: { state: RoomState; authUid: str
 
         {ranked && results.irv && results.irv.rounds.length > 1 && (
           <details className="rounds">
-            <summary className="small">How the ranked count worked ({results.irv.rounds.length} rounds)</summary>
+            <summary className="small">{t('room.rounds', { count: results.irv.rounds.length })}</summary>
             <ol className="small muted">
               {results.irv.rounds.map((r, i) => (
                 <li key={i}>
                   {Object.entries(r.counts).sort((x, y) => y[1] - x[1]).map(([id, n]) => `${labelOf(id)} ${n}`).join(' · ')}
-                  {r.eliminated ? ` → ${labelOf(r.eliminated)} eliminated, its votes move to next choices` : results.irv!.winnerId ? ` → ${labelOf(results.irv!.winnerId)} has a majority` : ''}
+                  {r.eliminated ? ` → ${t('room.eliminated', { option: labelOf(r.eliminated) })}` : results.irv!.winnerId ? ` → ${t('room.majority', { option: labelOf(results.irv!.winnerId) })}` : ''}
                 </li>
               ))}
             </ol>
@@ -276,8 +277,8 @@ function RoomView({ state, authUid, embedded }: { state: RoomState; authUid: str
               setNewOption('');
             }}
           >
-            <input className="input grow" placeholder="Suggest another option" maxLength={140} value={newOption} onChange={(e) => setNewOption(e.target.value)} aria-label="New option" />
-            <button className="btn" type="submit">Add</button>
+            <input className="input grow" placeholder={t('room.suggest')} maxLength={140} value={newOption} onChange={(e) => setNewOption(e.target.value)} aria-label={t('room.newOption')} />
+            <button className="btn" type="submit">{t('common.add')}</button>
           </form>
         )}
       </section>
@@ -288,30 +289,30 @@ function RoomView({ state, authUid, embedded }: { state: RoomState; authUid: str
 
       {embedded && (
         <p className="small muted" style={{ textAlign: 'center' }}>
-          <a href={shareUrl} target="_blank" rel="noreferrer">Open in Meld</a> · code <span className="mono">{room.code}</span>
+          <a href={shareUrl} target="_blank" rel="noreferrer">{t('room.openInMeld')}</a> · {t('room.codeLabel')} <span className="mono">{room.code}</span>
         </p>
       )}
 
       {isOwner && !embedded && (
         <section className="panel">
-          <div className="eyebrow">You created this room</div>
+          <div className="eyebrow">{t('room.ownerEyebrow')}</div>
           <div className="chips" style={{ marginTop: 10 }}>
             {open ? (
               <button className="btn small primary" disabled={total === 0} onClick={() => { closeRoom(room, results.leaderId); }}>
-                Close &amp; crown {ranked ? 'winner' : 'leader'}
+                {ranked ? t('room.closeWinner') : t('room.closeLeader')}
               </button>
             ) : (
-              <button className="btn small" onClick={() => reopenRoom(room)}>Reopen voting</button>
+              <button className="btn small" onClick={() => reopenRoom(room)}>{t('room.reopen')}</button>
             )}
             <button
               className="btn small ghost"
               disabled={ballots.length === 0}
-              onClick={() => confirm('Clear every vote in this room?') && resetVotes(room)}
+              onClick={() => confirm(t('room.resetConfirm')) && resetVotes(room)}
             >
-              Reset votes
+              {t('room.reset')}
             </button>
           </div>
-          {open && leaders.length > 1 && <p className="small muted">It's a tie between {leaders.map(labelOf).join(' and ')}.</p>}
+          {open && leaders.length > 1 && <p className="small muted">{t('room.tie', { list: list(leaders.map(labelOf)) })}</p>}
         </section>
       )}
       {isOwner && !embedded && <Integrations room={room} />}
@@ -329,7 +330,7 @@ function Outcome({ room, options, counts, total, ballots, winnerId, tie, rounds 
   const [busy, setBusy] = useState(false);
   const winner = options.find((o) => o.id === winnerId) ?? null;
   const url = `${location.origin}/r/${room.code}`;
-  const details = `Decided in Meld: ${winner?.label ?? ''}\n${url}`;
+  const details = `${t('outcome.decidedIn', { winner: winner?.label ?? '' })}\n${url}`;
   const slot = winner?.slotStartMs ? { start: winner.slotStartMs, end: winner.slotEndMs ?? winner.slotStartMs + 3_600_000 } : null;
   const feeds = feedUrls(room.code, room.seriesId);
 
@@ -341,13 +342,13 @@ function Outcome({ room, options, counts, total, ballots, winnerId, tie, rounds 
         code: room.code,
         url,
         question: room.question,
-        modeLabel: `${room.mode === 'TIME_SLOTS' ? 'Time slots' : 'Quick poll'}${room.isRanked ? ' · ranked' : ''}`,
+        modeLabel: `${room.mode === 'TIME_SLOTS' ? t('mode.timeSlots') : t('mode.quickPoll')}${room.isRanked ? ` · ${t('tag.ranked')}` : ''}`,
         decided: true,
         winner: winner ? { label: winner.label, votes: counts[winner.id] ?? 0, pct: pct(winner.id) } : null,
         rows: [...options].sort((a, b) => (counts[b.id] ?? 0) - (counts[a.id] ?? 0)).map((o) => ({ label: o.label, votes: counts[o.id] ?? 0, pct: pct(o.id), isWinner: o.id === winnerId })),
         voters: ballots.filter((b) => winner && (room.isRanked ? b.optionIds[0] === winner.id : b.optionIds.includes(winner.id))).map((b) => ({ avatarStyleIndex: b.avatarStyleIndex ?? 0, colorIndex: b.badgeColorIndex })),
         totalVoters: ballots.length,
-        note: room.isRanked && rounds > 1 ? `after ${rounds} rounds` : tie ? 'tie-break' : undefined,
+        note: room.isRanked && rounds > 1 ? t('outcome.afterRounds', { count: rounds }) : tie ? t('outcome.tieBreak') : undefined,
         dark: matchMedia('(prefers-color-scheme: dark)').matches,
       });
       await shareOrDownloadCard(blob, room.code);
@@ -358,28 +359,28 @@ function Outcome({ room, options, counts, total, ballots, winnerId, tie, rounds 
 
   return (
     <section className="panel stack">
-      <div className="eyebrow" style={{ color: 'var(--emerald)' }}>Decision</div>
-      <div style={{ fontWeight: 700, fontSize: 22 }}>{winner ? winner.label : 'No votes were cast'}</div>
+      <div className="eyebrow" style={{ color: 'var(--emerald)' }}>{t('outcome.decision')}</div>
+      <div style={{ fontWeight: 700, fontSize: 22 }}>{winner ? winner.label : t('outcome.noVotes')}</div>
       {slot && (
         <div className="chips">
-          <a className="btn small" href={googleCalendarUrl(room.question, slot.start, slot.end, details)} target="_blank" rel="noreferrer">Add to Google Calendar</a>
-          <button className="btn small" onClick={() => downloadIcs(room.code, room.question, slot.start, slot.end, details)}>Apple / Outlook (.ics)</button>
-          <a className="btn small ghost" href={feeds.apple} title="Subscribe: future decisions appear automatically">Subscribe</a>
+          <a className="btn small" href={googleCalendarUrl(room.question, slot.start, slot.end, details)} target="_blank" rel="noreferrer">{t('outcome.googleCal')}</a>
+          <button className="btn small" onClick={() => downloadIcs(room.code, room.question, slot.start, slot.end, details)}>{t('outcome.ics')}</button>
+          <a className="btn small ghost" href={feeds.apple} title={t('outcome.subscribeTitle')}>{t('outcome.subscribe')}</a>
         </div>
       )}
-      <button className="btn primary" disabled={busy} onClick={exportCard}>{busy ? 'Making your card…' : 'Share result card'}</button>
+      <button className="btn primary" disabled={busy} onClick={exportCard}>{busy ? t('outcome.making') : t('outcome.shareCard')}</button>
     </section>
   );
 }
 
 function Status({ room, open, now, synced }: { room: Room; open: boolean; now: number; synced: boolean }) {
-  if (!open) return <span className="badge">Closed</span>;
+  if (!open) return <span className="badge">{t('status.closed')}</span>;
   if (room.deadlineEpochMs) {
-    return <span className="badge warn"><span className="dot" />{formatRemaining(room.deadlineEpochMs - now)} left</span>;
+    return <span className="badge warn"><span className="dot" />{t('status.left', { time: formatRemaining(room.deadlineEpochMs - now) })}</span>;
   }
   return synced
-    ? <span className="badge live"><span className="dot" />Live</span>
-    : <span className="badge warn"><span className="dot" />Syncing</span>;
+    ? <span className="badge live"><span className="dot" />{t('status.live')}</span>
+    : <span className="badge warn"><span className="dot" />{t('status.syncing')}</span>;
 }
 
 function SharePanel({ room, url }: { room: Room; url: string }) {
@@ -395,16 +396,16 @@ function SharePanel({ room, url }: { room: Room; url: string }) {
   return (
     <section className="panel">
       <div className="row" style={{ alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
-        <Qr value={url} label={`QR code for room ${room.code}`} />
+        <Qr value={url} label={t('share.qr', { code: room.code })} />
         <div className="grow stack" style={{ minWidth: 200 }}>
-          <div className="eyebrow">Invite people</div>
+          <div className="eyebrow">{t('share.invite')}</div>
           <div className="mono" style={{ fontSize: 28, letterSpacing: '0.2em' }}>{room.code}</div>
           <div className="small muted" style={{ wordBreak: 'break-all' }}>{url}</div>
           <div className="chips">
-            <button className="btn small primary" onClick={copy}>{copied ? 'Copied' : 'Copy link'}</button>
+            <button className="btn small primary" onClick={copy}>{copied ? t('share.copied') : t('share.copy')}</button>
             {canShare && (
               <button className="btn small" onClick={() => navigator.share({ title: 'Meld', text: room.question, url }).catch(() => {})}>
-                Share…
+                {t('share.share')}
               </button>
             )}
           </div>
@@ -439,7 +440,7 @@ function Opinions({ room, comments, options, open, isOwner, authUid }: {
         const seconds = (Date.now() - startedAt.current) / 1000;
         const base64 = await blobToBase64(blob);
         if (base64.length > MAX_AUDIO_BASE64) {
-          setRecError('That note is too long to send. Keep it under a minute.');
+          setRecError(t('op.tooLong'));
           return;
         }
         addComment(room, text, target || null, { base64, mimeType: blob.type.split(';')[0], seconds });
@@ -451,7 +452,7 @@ function Opinions({ room, comments, options, open, isOwner, authUid }: {
       setRecording(true);
       setTimeout(() => rec.state === 'recording' && rec.stop(), 60_000);
     } catch {
-      setRecError("Microphone isn't available. You can type your opinion instead.");
+      setRecError(t('op.noMic'));
     }
   };
   const stopRecording = () => {
@@ -463,9 +464,9 @@ function Opinions({ room, comments, options, open, isOwner, authUid }: {
 
   return (
     <section className="panel">
-      <div className="eyebrow">Opinions</div>
+      <div className="eyebrow">{t('op.title')}</div>
       <div style={{ marginTop: 6 }}>
-        {comments.length === 0 && <p className="small muted">No opinions yet. Say why you voted.</p>}
+        {comments.length === 0 && <p className="small muted">{t('op.empty')}</p>}
         {comments.map((c) => {
           const optionLabel = options.find((o) => o.id === c.optionId)?.label;
           const mineComment = c.authorAuthUid === authUid || c.voterUid === me.uid;
@@ -473,12 +474,12 @@ function Opinions({ room, comments, options, open, isOwner, authUid }: {
             <div className="comment" key={c.id}>
               <GeometricAvatar avatarStyleIndex={c.avatarStyleIndex ?? 0} colorIndex={c.badgeColorIndex} size={40} title={c.voterName} />
               <div className="grow">
-                <div className="small"><strong>{c.voterName}</strong>{optionLabel && <span className="muted"> · on {optionLabel}</span>}</div>
+                <div className="small"><strong>{c.voterName}</strong>{optionLabel && <span className="muted"> · {t('op.on', { option: optionLabel })}</span>}</div>
                 <div style={{ marginTop: 2 }}>{c.transcript}</div>
                 {c.hasAudio && <AudioPlayer room={room} id={c.id} />}
               </div>
               {(mineComment || isOwner) && (
-                <button className="btn ghost small" aria-label="Delete opinion" onClick={() => deleteComment(room, c.id)}>✕</button>
+                <button className="btn ghost small" aria-label={t('op.delete')} onClick={() => deleteComment(room, c.id)}>✕</button>
               )}
             </div>
           );
@@ -495,17 +496,17 @@ function Opinions({ room, comments, options, open, isOwner, authUid }: {
             setText('');
           }}
         >
-          <select className="input" value={target} onChange={(e) => setTarget(e.target.value)} aria-label="Opinion about">
-            <option value="">About the whole room</option>
-            {options.map((o) => <option key={o.id} value={o.id}>About: {o.label}</option>)}
+          <select className="input" value={target} onChange={(e) => setTarget(e.target.value)} aria-label={t('op.target')}>
+            <option value="">{t('op.aboutRoom')}</option>
+            {options.map((o) => <option key={o.id} value={o.id}>{t('op.aboutOption', { option: o.label })}</option>)}
           </select>
           <div className="row">
-            <input className="input grow" placeholder="Why did you vote that way?" maxLength={300} value={text} onChange={(e) => setText(e.target.value)} aria-label="Your opinion" />
-            <button className="btn" type="submit" disabled={!text.trim()}>Post</button>
+            <input className="input grow" placeholder={t('op.placeholder')} maxLength={300} value={text} onChange={(e) => setText(e.target.value)} aria-label={t('op.aria')} />
+            <button className="btn" type="submit" disabled={!text.trim()}>{t('common.post')}</button>
           </div>
           {'MediaRecorder' in window && (
             <button type="button" className={`btn small${recording ? ' primary' : ''}`} onClick={recording ? stopRecording : startRecording}>
-              {recording ? '■ Stop & send voice note' : '● Record voice note'}
+              {recording ? t('op.stop') : t('op.record')}
             </button>
           )}
           {recError && <p className="error">{recError}</p>}
@@ -525,7 +526,7 @@ function AudioPlayer({ room, id }: { room: Room; id: string }) {
       style={{ marginTop: 8 }}
       onClick={() => fetchAudio(room, id).then((s) => (s ? setSrc(s) : setFailed(true))).catch(() => setFailed(true))}
     >
-      {failed ? 'Audio unavailable offline' : '▶ Play voice note'}
+      {failed ? t('op.audioOffline') : t('op.play')}
     </button>
   );
 }
@@ -575,7 +576,7 @@ function OptionCard({ label, count, pct, voters, mine, rank = null, winner, open
       className={`option${mine ? ' mine' : ''}${winner ? ' winner' : ''}${dx ? ' dragging' : ''}`}
       disabled={!open}
       aria-pressed={mine}
-      aria-label={rank ? `${label}, your choice number ${rank}` : undefined}
+      aria-label={rank ? t('option.choiceN', { label, n: rank }) : undefined}
       style={{ transform: dx ? `translateX(${dx}px) rotate(${dx / 40}deg)` : undefined, touchAction: 'pan-y' }}
       onPointerDown={onDown}
       onPointerMove={onMove}
@@ -587,8 +588,8 @@ function OptionCard({ label, count, pct, voters, mine, rank = null, winner, open
       }}
     >
       <span className="fill" style={{ width: `${pct}%` }} />
-      <span className="swipe-hint yes" style={{ opacity: Math.max(0, dx) / THRESHOLD }}>VOTE ›</span>
-      <span className="swipe-hint no" style={{ opacity: Math.max(0, -dx) / THRESHOLD }}>‹ DROP</span>
+      <span className="swipe-hint yes" style={{ opacity: Math.max(0, dx) / THRESHOLD }}>{t('option.vote')}</span>
+      <span className="swipe-hint no" style={{ opacity: Math.max(0, -dx) / THRESHOLD }}>{t('option.drop')}</span>
       <span className="content" style={{ opacity: dx ? 0.35 + 0.65 * (1 - Math.min(1, Math.abs(dx) / 140)) : 1 }}>
         <span className={`check${rank ? ' ranked' : ''}`} aria-hidden="true">{rank ?? (mine ? '✓' : '')}</span>
         <span className="grow">

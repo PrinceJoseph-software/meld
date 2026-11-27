@@ -3,6 +3,7 @@
 import QRCode from 'qrcode';
 import { AVATAR_VIEWBOX, avatarShapes, fromPacked } from './avatar';
 import { BADGE_COLORS } from './identity';
+import { getLang, t } from './i18n';
 
 export interface CardData {
   code: string;
@@ -136,7 +137,7 @@ export async function renderCard(d: CardData): Promise<Blob> {
   let y = panelY + 72;
   ctx.font = '700 22px MeldMono, monospace';
   ctx.fillStyle = d.decided ? c.emerald : c.accent;
-  ctx.fillText(`${d.decided ? 'DECIDED' : 'LIVE RESULTS'} · ${d.modeLabel.toUpperCase()}`, pad + 12, y);
+  ctx.fillText(`${t(d.decided ? 'card.decided' : 'card.live')} · ${d.modeLabel.toLocaleUpperCase(getLang())}`, pad + 12, y);
   y += 34;
   ctx.font = '400 74px MeldSerif, serif';
   ctx.fillStyle = c.ink;
@@ -152,13 +153,13 @@ export async function renderCard(d: CardData): Promise<Blob> {
     ctx.fill();
     ctx.fillStyle = d.decided ? c.emerald : c.accent;
     ctx.font = '700 22px MeldMono, monospace';
-    ctx.fillText(d.decided ? '★ WINNER' : '▲ LEADING', pad + 40, y + 28);
+    ctx.fillText(t(d.decided ? 'card.winner' : 'card.leading'), pad + 40, y + 28);
     ctx.fillStyle = c.ink;
     ctx.font = '700 50px MeldSans, sans-serif';
     ctx.fillText(wrap(ctx, d.winner.label, W - 2 * pad - 340, 1)[0], pad + 40, y + 66);
     ctx.font = '600 22px MeldSans, sans-serif';
     ctx.fillStyle = c.ink2;
-    ctx.fillText(`${d.winner.votes} vote${d.winner.votes === 1 ? '' : 's'} · ${d.winner.pct}%${d.note ? ` · ${d.note}` : ''}`, pad + 40, y + 128);
+    ctx.fillText(`${t('card.votes', { count: d.winner.votes })} · ${d.winner.pct}%${d.note ? ` · ${d.note}` : ''}`, pad + 40, y + 128);
     // voter avatars on the winner
     const shown = d.voters.slice(0, 5);
     const imgs = await Promise.all(shown.map((v) => avatarImage(v.avatarStyleIndex, v.colorIndex, 96).catch(() => null)));
@@ -204,13 +205,13 @@ export async function renderCard(d: CardData): Promise<Blob> {
   ctx.drawImage(qr, pad + 2, fy + 10, 160, 160);
   ctx.fillStyle = c.ink;
   ctx.font = '700 34px MeldSans, sans-serif';
-  ctx.fillText(d.decided ? 'See the full results' : 'Scan to vote', pad + 210, fy + 36);
+  ctx.fillText(t(d.decided ? 'card.seeResults' : 'card.scanToVote'), pad + 210, fy + 36);
   ctx.font = '500 24px MeldMono, monospace';
   ctx.fillStyle = c.accent;
   ctx.fillText(d.url.replace(/^https?:\/\//, ''), pad + 210, fy + 92);
   ctx.font = '500 22px MeldSans, sans-serif';
   ctx.fillStyle = c.ink2;
-  ctx.fillText(`${d.totalVoters} voter${d.totalVoters === 1 ? '' : 's'} · ${new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}`, pad + 210, fy + 136);
+  ctx.fillText(`${t('card.voters', { count: d.totalVoters })} · ${new Date().toLocaleDateString(getLang(), { day: 'numeric', month: 'short', year: 'numeric' })}`, pad + 210, fy + 136);
 
   return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('render failed'))), 'image/png'));
 }
@@ -220,7 +221,7 @@ export async function shareOrDownloadCard(blob: Blob, code: string) {
   const file = new File([blob], `meld-${code}.png`, { type: 'image/png' });
   if (navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: 'Meld results' });
+      await navigator.share({ files: [file], title: t('card.shareTitle') });
       return;
     } catch { /* cancelled: fall through to download */ }
   }

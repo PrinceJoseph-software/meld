@@ -6,17 +6,19 @@ import {
 } from '../avatar';
 import { BADGE_COLORS, getIdentity, saveIdentity, type Identity } from '../identity';
 import { GeometricAvatar } from './GeometricAvatar';
+import { t } from '../i18n';
 
 type Mode = 'profile' | 'mask';
 type Tab = 'chassis' | 'palette' | 'pattern' | 'eyes' | 'accessory' | 'frame';
 
+// label/title are i18n keys
 const TABS: { id: Tab; label: string; title: string }[] = [
-  { id: 'chassis', label: 'Shape', title: 'Geometric shape' },
-  { id: 'palette', label: 'Palette', title: 'Colour palette' },
-  { id: 'pattern', label: 'Pattern', title: 'Surface pattern' },
-  { id: 'eyes', label: 'Eyes', title: 'Eye expression' },
-  { id: 'accessory', label: 'Gear', title: 'Gear & accessories' },
-  { id: 'frame', label: 'Frame', title: 'Border frame' },
+  { id: 'chassis', label: 'studio.tabShape', title: 'studio.tabShapeTitle' },
+  { id: 'palette', label: 'studio.tabPalette', title: 'studio.tabPaletteTitle' },
+  { id: 'pattern', label: 'studio.tabPattern', title: 'studio.tabPatternTitle' },
+  { id: 'eyes', label: 'studio.tabEyes', title: 'studio.tabEyesTitle' },
+  { id: 'accessory', label: 'studio.tabGear', title: 'studio.tabGearTitle' },
+  { id: 'frame', label: 'studio.tabFrame', title: 'studio.tabFrameTitle' },
 ];
 
 const MASK_ALIASES = ['Agent 07', 'Phantom', 'Incognito', 'Specter', 'Cipher', 'Shadow', 'Ghost', 'Enigma', 'Mirage', 'Nomad'];
@@ -71,23 +73,23 @@ export function AvatarStudio({ open, onClose, onSaved }: { open: boolean; onClos
     onClose();
   };
 
-  const title = TABS.find((t) => t.id === tab)!.title;
+  const title = t(TABS.find((tb) => tb.id === tab)!.title);
 
   return (
     <dialog ref={dialog} className="studio" onClose={onClose} aria-labelledby="studio-title">
       <div className="row between">
         <div>
-          <div className="eyebrow" id="studio-title">{mode === 'profile' ? 'Avatar Studio' : 'Anonymous Mask'}</div>
+          <div className="eyebrow" id="studio-title">{mode === 'profile' ? t('studio.profileTitle') : t('studio.maskTitle')}</div>
           <div className="small muted">
-            {mode === 'profile' ? 'Your public avatar and display name' : 'What others see in anonymous rooms'}
+            {mode === 'profile' ? t('studio.profileSub') : t('studio.maskSub')}
           </div>
         </div>
-        <button className="btn small" onClick={save}>Done</button>
+        <button className="btn small" onClick={save}>{t('common.done')}</button>
       </div>
 
-      <div className="segmented" role="group" aria-label="Which identity" style={{ marginTop: 14 }}>
-        <button aria-pressed={mode === 'profile'} onClick={() => { setMode('profile'); setPulse((p) => p + 1); }}>My Profile</button>
-        <button aria-pressed={mode === 'mask'} onClick={() => { setMode('mask'); setPulse((p) => p + 1); }}>Anonymous Mask</button>
+      <div className="segmented" role="group" aria-label={t('studio.which')} style={{ marginTop: 14 }}>
+        <button aria-pressed={mode === 'profile'} onClick={() => { setMode('profile'); setPulse((p) => p + 1); }}>{t('studio.myProfile')}</button>
+        <button aria-pressed={mode === 'mask'} onClick={() => { setMode('mask'); setPulse((p) => p + 1); }}>{t('studio.maskTitle')}</button>
       </div>
 
       <div className="row" style={{ marginTop: 16, gap: 16 }}>
@@ -96,10 +98,10 @@ export function AvatarStudio({ open, onClose, onSaved }: { open: boolean; onClos
           <input
             className="input"
             maxLength={mode === 'profile' ? 28 : 24}
-            placeholder={mode === 'profile' ? 'Display name (e.g. Alex)' : 'Mask name'}
+            placeholder={mode === 'profile' ? t('studio.displayNamePh') : t('studio.maskName')}
             value={active.name}
             onChange={(e) => (mode === 'profile' ? setStd : setMask)((s) => ({ ...s, name: e.target.value }))}
-            aria-label={mode === 'profile' ? 'Display name' : 'Mask name'}
+            aria-label={mode === 'profile' ? t('studio.displayName') : t('studio.maskName')}
           />
           <div className="chips">
             <button
@@ -110,16 +112,16 @@ export function AvatarStudio({ open, onClose, onSaved }: { open: boolean; onClos
                 ...(mode === 'mask' ? { name: MASK_ALIASES[Math.floor(Math.random() * MASK_ALIASES.length)] } : {}),
               })}
             >
-              Random disguise
+              {t('studio.random')}
             </button>
-            <button className="btn small ghost" onClick={() => setPulse((p) => p + 1)}>Preview</button>
+            <button className="btn small ghost" onClick={() => setPulse((p) => p + 1)}>{t('common.preview')}</button>
           </div>
         </div>
       </div>
 
-      <div className="tabs" role="tablist" aria-label="Avatar layers" style={{ marginTop: 16 }}>
-        {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}>{t.label}</button>
+      <div className="tabs" role="tablist" aria-label={t('studio.layers')} style={{ marginTop: 16 }}>
+        {TABS.map((tb) => (
+          <button key={tb.id} role="tab" aria-selected={tab === tb.id} onClick={() => setTab(tb.id)}>{t(tb.label)}</button>
         ))}
       </div>
       <div className="small muted mono" style={{ margin: '12px 0 8px' }}>{title}</div>
@@ -127,7 +129,7 @@ export function AvatarStudio({ open, onClose, onSaved }: { open: boolean; onClos
       <div className="studio-grid" role="tabpanel">
         {tab === 'palette'
           ? BADGE_COLORS.map((_, i) => (
-              <button key={i} className="studio-item" aria-pressed={active.color === i} onClick={() => setActive({ color: i })} aria-label={`${PALETTE_NAMES[i]} palette`}>
+              <button key={i} className="studio-item" aria-pressed={active.color === i} onClick={() => setActive({ color: i })} aria-label={t('studio.paletteAria', { name: PALETTE_NAMES[i] })}>
                 <GeometricAvatar avatarStyleIndex={toPacked(active.spec)} colorIndex={i} size={40} />
                 <span>{PALETTE_NAMES[i]}</span>
               </button>
@@ -144,7 +146,7 @@ export function AvatarStudio({ open, onClose, onSaved }: { open: boolean; onClos
             })}
       </div>
       <p className="small muted" style={{ marginBottom: 0 }}>
-        {mode === 'profile' ? 'Shown next to your votes in normal rooms.' : 'This badge disguises your identity on anonymous ballots.'}
+        {mode === 'profile' ? t('studio.profileNote') : t('studio.maskNote')}
       </p>
     </dialog>
   );

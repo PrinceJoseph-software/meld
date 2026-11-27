@@ -1,5 +1,6 @@
 // Local, account-free identity (mirrors the Android IdentityStore). Stored in localStorage.
 import { DEFAULT_MASK_SPEC, javaHash, toPacked } from './avatar';
+import { t } from './i18n';
 
 export const BADGE_COLORS = [
   '#FF451A', '#2563EB', '#0D9488', '#D97706', '#475569', '#7C3AED', '#E11D48', '#0284C7',
@@ -66,13 +67,13 @@ export function getIdentity(): Identity {
 export function saveIdentity(next: Partial<Identity>) {
   const merged = { ...getIdentity(), ...next };
   merged.displayName = clean(merged.displayName, 28);
-  merged.maskName = clean(merged.maskName, 24) || 'Incognito';
+  merged.maskName = clean(merged.maskName, 24) || t('common.incognito');
   cached = merged;
   safeSet(KEY, JSON.stringify(merged));
 }
 
 export function effectiveName(id: Identity, anonymous: boolean) {
-  return anonymous ? id.maskName || 'Incognito' : id.displayName || 'Guest';
+  return anonymous ? id.maskName || t('common.incognito') : id.displayName || t('common.guest');
 }
 
 /** The look this device shows in a room: the anonymous mask in anonymous rooms. */

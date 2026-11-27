@@ -28,7 +28,7 @@ const TAP_FX = () => {
   });
   const mk = async (scheme) => {
     const ctx = await browser.newContext({
-      viewport: { width: 780, height: 1688 }, deviceScaleFactor: 1, hasTouch: false, colorScheme: scheme,
+      viewport: { width: 780, height: 1688 }, deviceScaleFactor: 1, hasTouch: false, colorScheme: scheme, locale: process.env.DEMO_LOCALE || 'en-US',
       recordVideo: { dir: OUT, size: { width: 780, height: 1688 } }, acceptDownloads: true,
     });
     await ctx.addInitScript(TAP_FX);

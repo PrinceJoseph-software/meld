@@ -8,10 +8,12 @@ import { TopBar } from './components/Logo';
 import { getSeries, sanitizeCode } from './model';
 import { navigate } from './router';
 import { LaunchReveal } from './components/Mark';
+import { t, useLang } from './i18n';
 
 export default function App() {
   const path = usePath();
   const online = useOnline();
+  useLang(); // re-render everything when the language changes
 
   // Invisible anonymous sign-in, done once while online on the very first visit. The id is
   // stored on the device, so every later visit (online or offline) reuses it: no login screen.
@@ -60,7 +62,7 @@ export default function App() {
       <LaunchReveal />
       {!online && (
         <div className="banner" role="status">
-          You're offline. You can keep voting; changes sync when you reconnect.
+          {t('common.offline')}
         </div>
       )}
       {match ? <RoomPage key={code ?? 'invalid'} code={code} /> : <Home />}
@@ -81,7 +83,7 @@ function SeriesRedirect({ id }: { id: string | null }) {
     <main className="app">
       <TopBar />
       <section className="panel">
-        <p className="muted">{failed ? "This recurring poll doesn't exist (or you're offline)." : "Opening this week's poll…"}</p>
+        <p className="muted">{failed ? t('series.missing') : t('series.opening')}</p>
       </section>
     </main>
   );
