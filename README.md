@@ -24,6 +24,10 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue?style=flat" alt="License: MIT" /></a>
 </p>
 
+<p align="center">
+  <img src="docs/media/meld-demo.gif" width="720" alt="Two people using Meld: Alice creates a ranked poll, Bob votes from a link, goes offline, and the winner is crowned" />
+</p>
+
 ---
 
 ## Overview

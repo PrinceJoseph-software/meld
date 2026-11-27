@@ -1,6 +1,6 @@
 # Promo video & GIF
 
-The demo is **real footage of the web app**. Two browsers (Alice, the creator, in dark mode; Bob, a voter, in light mode) run against the Firebase emulators and are composited into branded videos.
+The demo is **real footage of the web app**. Two browsers (Alice, the creator, in dark mode; Bob, a voter, in light mode) run against the live site (or, optionally, a local build on the Firebase emulators) and are composited into branded videos.
 
 Outputs (in `out/`, not committed):
 - `meld-demo-16x9.mp4`: 1920×1080, about 46 s (X, LinkedIn, YouTube, Product Hunt)
@@ -21,11 +21,13 @@ cd web && FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_AUTH_EMULATOR_HOST=127
 
 # 2. Record, render graphics, composite
 cd ../marketing/promo
-DEMO_DOMAIN=meld.yourdomain.com node record.cjs   # the domain shown in the share panel and result card
+DEMO_DOMAIN=meld.yourdomain.com node record.cjs   # local build; omit DEMO_DOMAIN to record the live site
 node assets.cjs
 python3 compose.py            # writes the two MP4s and the two GIFs into out/
 ```
 
 `compose.py` also writes both GIFs (25 s highlight cuts). Captions live in `out/timeline.json` after recording; edit the text there, then re-run `assets.cjs` and `compose.py`.
 
-The recording injects two things that are not part of the app: visible tap ripples, and a `crypto.randomUUID` shim needed only because the demo hostname is served over plain http.
+The recording injects two things that are not part of the app: visible tap ripples, and a `crypto.randomUUID` shim needed only when a local demo hostname is served over plain http.
+
+**Quickest route:** skip step 1 and run `node record.cjs` on its own. It records https://meld-one.vercel.app (or `DEMO_BASE`), which creates one demo room in that Firebase project.
