@@ -32,3 +32,6 @@ app/google-services.json
 web/public/.well-known/
 *.tsbuildinfo
 .api-test/
+
+# Promo render output
+marketing/promo/out/
