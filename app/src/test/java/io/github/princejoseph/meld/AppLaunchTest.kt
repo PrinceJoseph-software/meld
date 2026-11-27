@@ -28,7 +28,11 @@ class AppLaunchTest {
         val activity = controller.setup().get()
         repeat(5) { shadowOf(Looper.getMainLooper()).idle() }
         assertFalse("MainActivity finished during launch", activity.isFinishing)
+        // finish() first, so this is a real exit (not a config change) and the ViewModel and its
+        // tickers are cleared; otherwise they keep the main looper busy for later tests.
+        activity.finish()
         controller.pause().stop().destroy()
+        shadowOf(Looper.getMainLooper()).idle()
     }
 
     @Test
