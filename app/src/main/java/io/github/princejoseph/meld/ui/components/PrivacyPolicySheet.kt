@@ -1,5 +1,6 @@
 package io.github.princejoseph.meld.ui.components
 
+import androidx.compose.foundation.clickable
 import io.github.princejoseph.meld.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.BorderStroke
@@ -123,11 +124,16 @@ fun PrivacyPolicySheet(
                 body = "Meld contains zero analytics or ad SDKs. Android Auto Backup is disabled. Deleting a room from your history erases it and its voice notes from this device; deleting your opinion removes it everywhere."
             )
 
+            // Full policy lives on the website (same text as PRIVACY_POLICY.md in the repo).
+            val policyUrl = io.github.princejoseph.meld.BuildConfig.WEB_BASE_URL
+                .ifEmpty { "https://meld-one.vercel.app" } + "/privacy"
+            val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
             Text(
-                text = "Effective Nov 26, 2026 • Full document in PRIVACY_POLICY.md",
+                text = "Effective Nov 26, 2026 • Full policy: " + policyUrl.removePrefix("https://"),
                 fontFamily = JetBrainsMonoFamily,
                 fontSize = 11.sp,
-                color = colors.inkSecondary
+                color = colors.inkSecondary,
+                modifier = Modifier.clickable { runCatching { uriHandler.openUri(policyUrl) } }
             )
 
             Spacer(modifier = Modifier.height(12.dp))

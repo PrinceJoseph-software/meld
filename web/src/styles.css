@@ -365,3 +365,11 @@ dialog.studio { width: min(520px, calc(100vw - 24px)); max-height: calc(100dvh -
 
 /* Arabic and Devanagari letters join; tracking (letter-spacing) breaks the joins. */
 :root[lang='ar'] *, :root[lang='hi'] * { letter-spacing: 0 !important; }
+.prose { margin-top: 24px; padding: 28px clamp(18px, 4vw, 44px); line-height: 1.65; max-width: 820px; margin-inline: auto; }
+.prose h1 { margin-top: 0; }
+.prose h2 { font-family: var(--serif); font-weight: 400; font-size: 26px; margin: 28px 0 8px; }
+.prose h3 { font-size: 17px; margin: 20px 0 6px; }
+.prose p, .prose li { color: var(--ink-2); }
+.prose strong { color: var(--ink); }
+.prose ul { padding-inline-start: 22px; }
+.prose code { font-size: 0.9em; background: var(--inset); padding: 1px 6px; border-radius: 6px; }

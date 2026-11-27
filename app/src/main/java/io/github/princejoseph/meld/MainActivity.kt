@@ -94,6 +94,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // The previous launch crashed: show the saved report (plain Views) instead of the app,
+        // so the user can share it rather than watch Meld close again.
+        CrashReport.pending(this)?.let { report ->
+            CrashReport.showScreen(this, report) { recreate() }
+            return
+        }
         handleDeepLink(intent)
 
         setContent {

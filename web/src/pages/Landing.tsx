@@ -191,7 +191,7 @@ export function Landing() {
       <footer className="l-footer small muted">
         <span>{t('land.footer', { year: new Date().getFullYear() })}</span>
         <nav aria-label="Footer">
-          <a href={`${GITHUB}/blob/main/PRIVACY_POLICY.md`} target="_blank" rel="noreferrer">{t('common.privacy')}</a>
+          <a href="/privacy" onClick={go('/privacy')}>{t('common.privacy')}</a>
           <a href={`${GITHUB}/blob/main/SECURITY.md`} target="_blank" rel="noreferrer">{t('land.security')}</a>
           <a href={`${GITHUB}/issues/new/choose`} target="_blank" rel="noreferrer">{t('land.report')}</a>
           <a href={GITHUB} target="_blank" rel="noreferrer">GitHub</a>

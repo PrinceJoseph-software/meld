@@ -5,6 +5,7 @@ export function navigate(path: string, replace = false) {
   if (replace) history.replaceState(null, '', path);
   else history.pushState(null, '', path);
   window.dispatchEvent(new PopStateEvent('popstate'));
+  if (!replace) window.scrollTo(0, 0); // a new page starts at the top
 }
 
 export function usePath(): string {

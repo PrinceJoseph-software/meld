@@ -8,7 +8,7 @@ import { VitePWA } from 'vite-plugin-pwa';
  * from app.html, which search engines are told not to index.
  */
 function prerenderLanding(): Plugin {
-  let rendered = { html: '', jsonLd: '' };
+  let rendered = { html: '', jsonLd: '', privacy: '' };
   return {
     name: 'meld-prerender-landing',
     apply: 'build',
@@ -23,7 +23,7 @@ function prerenderLanding(): Plugin {
       });
       try {
         const mod = await server.ssrLoadModule('/src/prerender.tsx');
-        rendered = mod.renderLanding();
+        rendered = { ...mod.renderLanding(), privacy: mod.renderPrivacy() };
       } finally {
         await server.close();
       }
@@ -31,6 +31,9 @@ function prerenderLanding(): Plugin {
     transformIndexHtml: {
       order: 'post',
       handler(html, ctx) {
+        if (ctx.filename.endsWith('privacy.html')) {
+          return html.replace('<div id="root"></div>', `<div id="root">${rendered.privacy}</div>`);
+        }
         if (!ctx.filename.endsWith('index.html')) return html;
         const verify = (process.env.GOOGLE_SITE_VERIFICATION || '').replace(/[^A-Za-z0-9_-]/g, '');
         return html
@@ -48,7 +51,7 @@ function prerenderLanding(): Plugin {
 
 export default defineConfig({
   build: {
-    rollupOptions: { input: { main: 'index.html', app: 'app.html' } },
+    rollupOptions: { input: { main: 'index.html', app: 'app.html', privacy: 'privacy.html' } },
   },
   plugins: [
     react(),
