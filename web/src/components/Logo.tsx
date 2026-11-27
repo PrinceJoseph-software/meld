@@ -6,10 +6,10 @@ export function TopBar({ right }: { right?: React.ReactNode }) {
     <header className="topbar">
       <a
         className="brand"
-        href="/"
+        href="/app"
         onClick={(e) => {
           e.preventDefault();
-          navigate('/');
+          navigate('/app');
         }}
       >
         <Mark size={34} />

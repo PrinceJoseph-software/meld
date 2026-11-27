@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /$
+Allow: /app
+Disallow: /r/
+Disallow: /s/
+Disallow: /embed/
+Disallow: /api/
+Disallow: /cal/
+
+Sitemap: https://meld-one.vercel.app/sitemap.xml

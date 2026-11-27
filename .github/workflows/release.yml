@@ -26,11 +26,9 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 9.3.1
 
       - name: Run unit tests
-        run: gradle testDebugUnitTest --no-daemon --console=plain
+        run: ./gradlew testDebugUnitTest --no-daemon --console=plain
 
       # The SAME upload key must sign every release, otherwise Android refuses to
       # install an update over the previous version. See docs/RELEASING.md.
@@ -64,7 +62,7 @@ jobs:
           MELD_WEB_BASE_URL: ${{ vars.MELD_WEB_BASE_URL }}
         run: |
           export VERSION_NAME="${VERSION_NAME#v}"
-          gradle assembleRelease bundleRelease --no-daemon --console=plain
+          ./gradlew assembleRelease bundleRelease --no-daemon --console=plain
           cp app/build/outputs/apk/release/app-release.apk "meld-${VERSION_NAME}.apk"
 
       - name: Upload APK to GitHub Release

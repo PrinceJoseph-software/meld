@@ -3,6 +3,7 @@ import { ensureSignedIn, firebaseConfigured } from './firebase';
 import { useOnline, usePath } from './router';
 import { Home } from './pages/Home';
 import { RoomPage } from './pages/Room';
+import { Landing } from './pages/Landing';
 import { TopBar } from './components/Logo';
 import { getSeries, sanitizeCode } from './model';
 import { navigate } from './router';
@@ -17,6 +18,9 @@ export default function App() {
   useEffect(() => {
     if (firebaseConfigured && online) ensureSignedIn().catch(() => {});
   }, [online]);
+
+  // Marketing page at the root; the app itself lives at /app. Installed PWAs start at /app.
+  if (path === '/' || path === '') return <Landing />;
 
   if (!firebaseConfigured) {
     return (

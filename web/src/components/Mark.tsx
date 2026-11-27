@@ -26,7 +26,7 @@ export function Mark({ size = 32, animate = false }: { size?: number; animate?: 
 export function LaunchReveal() {
   const [show, setShow] = useState(() => {
     // Only on the home screen: someone opening a shared poll link goes straight to the poll.
-    if (location.pathname !== '/') return false;
+    if (location.pathname !== '/app') return false;
     try {
       if (sessionStorage.getItem('meld.launched')) return false;
       sessionStorage.setItem('meld.launched', '1');

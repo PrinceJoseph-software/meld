@@ -9,7 +9,13 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=flat&logo=android&logoColor=white" alt="Platform" />
+  <a href="https://meld-one.vercel.app"><strong>Try it live → meld-one.vercel.app</strong></a> ·
+  <a href="https://github.com/PrinceJoseph-software/meld/releases/latest">Download for Android</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/PrinceJoseph-software/meld/actions/workflows/android-ci.yml"><img src="https://github.com/PrinceJoseph-software/meld/actions/workflows/android-ci.yml/badge.svg" alt="CI" /></a>
+  <img src="https://img.shields.io/badge/Platform-Android-3DDC84-3DDC84?style=flat&logo=android&logoColor=white" alt="Platform" />
   <img src="https://img.shields.io/badge/Kotlin-2.4+-7F52FF?style=flat&logo=kotlin&logoColor=white" alt="Kotlin" />
   <img src="https://img.shields.io/badge/Jetpack_Compose-Material_3-4285F4?style=flat&logo=jetpackcompose&logoColor=white" alt="Jetpack Compose" />
   <img src="https://img.shields.io/badge/Min_SDK-24-orange?style=flat" alt="Min SDK" />
@@ -30,7 +36,7 @@ Built natively on Android with **Jetpack Compose**, **Kotlin Coroutines & Flow**
 
 ## Key Features
 
-- **Zero-Login Decision Rooms, Everywhere**: Create rooms on Android or the web, share `https://<your-site>/r/<code>` (opens the app if installed via App Links, otherwise the PWA), or join with the 6-character code.
+- **Zero-Login Decision Rooms, Everywhere**: Create rooms on Android or the web, share `https://meld-one.vercel.app/r/<code>` (opens the app if installed via App Links, otherwise the PWA), or join with the 6-character code.
 - **Ranked Choice & Weekly Polls**: Instant-runoff ranked voting (identical results on Android, web and server) and polls that reopen every week behind one permanent link.
 - **Slack, Discord, Webhooks & Embeds**: `/meld Lunch? | Tacos | Ramen` in Slack or Discord; signed decision webhooks to your own system; live votable `<iframe>` embeds; subscribable calendar feeds for decided time slots; shareable 1080×1350 result cards. See [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
 - **Offline-First Cloud Sync**: Firestore with Anonymous Auth. Votes, rooms and opinions are written locally first, queued while offline, and synced on reconnect. Server-side security rules enforce one ballot per device, creator-only controls and deadlines.
@@ -122,8 +128,8 @@ firestore.rules, firebase.json
 
 3. **Build and Test**:
    ```bash
-   gradle assembleDebug
-   gradle testDebugUnitTest
+   ./gradlew assembleDebug
+   ./gradlew testDebugUnitTest
    ```
 
 ---
@@ -148,15 +154,18 @@ Pre-built Android APKs are published on the [GitHub Releases](https://github.com
 
 Found a bug, UI glitch, or have a feature request?
 
-- **Report a Bug**: Open a [Bug Report](https://github.com/PrinceJoseph-software/meld/issues/new?template=bug_report.md) with your Android version, device model, and steps to reproduce.
-- **Request a Feature**: Submit a [Feature Request](https://github.com/PrinceJoseph-software/meld/issues/new?template=feature_request.md) describing the use case.
+- **Report a Bug**: Open a [Bug Report](https://github.com/PrinceJoseph-software/meld/issues/new?template=bug_report.yml) with your platform (Android or web), version and steps to reproduce.
+- **Request a Feature**: Submit a [Feature Request](https://github.com/PrinceJoseph-software/meld/issues/new?template=feature_request.yml) describing the use case.
 - **Browse Open Issues**: View active discussions and known issues on the [Issue Tracker](https://github.com/PrinceJoseph-software/meld/issues).
 
 ---
 
-## Contributing
+## Contributing & Security
 
-Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for local setup instructions, test commands, and code quality guidelines before opening a pull request.
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+- Found a bug or have an idea? [Open an issue](https://github.com/PrinceJoseph-software/meld/issues/new/choose).
+- Found a security problem? Please report it privately, as described in [SECURITY.md](SECURITY.md).
+- Maintainers: see [docs/MAINTAINING.md](docs/MAINTAINING.md) for branch protection and release steps.
 
 ---
 
