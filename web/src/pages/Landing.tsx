@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Mark } from '../components/Mark';
 import { LanguagePicker } from '../components/LanguagePicker';
 import { navigate } from '../router';
@@ -35,6 +35,16 @@ export function Landing() {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [videoOk, setVideoOk] = useState(true);
+  // The 2.8 MB demo starts only after the page has loaded, so it never delays first paint (the
+  // poster shows until then). Skipped entirely for reduced motion and data-saver users.
+  const [videoSrc, setVideoSrc] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+    if (saveData || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const start = () => setTimeout(() => setVideoSrc('/media/meld-demo-16x9.mp4'), 300);
+    if (document.readyState === 'complete') start();
+    else addEventListener('load', start, { once: true });
+  }, []);
   const join = (e: React.FormEvent) => {
     e.preventDefault();
     const c = sanitizeCode(code);
@@ -92,13 +102,13 @@ export function Landing() {
         {videoOk && <section className="l-demo" aria-label={t('land.videoAria')}>
           <video
             className="l-video"
-            src="/media/meld-demo-16x9.mp4"
+            src={videoSrc}
             poster="/media/hero-poster.jpg"
             autoPlay
             muted
             loop
             playsInline
-            preload="metadata"
+            preload="none"
             onError={() => setVideoOk(false)}
             aria-label={t('land.videoAria')}
           />

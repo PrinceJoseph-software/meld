@@ -79,7 +79,8 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,png,ttf,svg,webmanifest}'],
         navigateFallback: '/app.html',
         globIgnores: ['google*.html'],
-        navigateFallbackDenylist: [/^\/\.well-known\//, /^\/api\//, /^\/cal\//, /^\/google[0-9a-f]+\.html$/],
+        // Real files (sitemap.xml, robots.txt, media, verification pages) must never get the app shell.
+        navigateFallbackDenylist: [/^\/\.well-known\//, /^\/api\//, /^\/cal\//, /^\/google[0-9a-f]+\.html$/, /\.(xml|txt|json|png|jpe?g|svg|mp4|webm|gif|ico|webmanifest|ics)$/i, /^\/privacy\.html$/],
       },
     }),
   ],
