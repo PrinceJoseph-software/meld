@@ -260,4 +260,11 @@
     <string name="error_create_failed">Raum konnte nicht erstellt werden. Bitte erneut versuchen.</string>
     <string name="card_after_rounds">nach %1$d Runden</string>
     <string name="action_share_result_card">Ergebniskarte teilen</string>
+    <string name="action_done">Fertig</string>
+    <string name="opinion_scope_general">Allgemein</string>
+    <string name="action_save">Speichern</string>
+    <string name="action_next">Weiter</string>
+    <string name="action_apply">Übernehmen</string>
+    <string name="card_scan_footer">Scannen, um abzustimmen oder Live-Ergebnisse zu sehen</string>
+    <string name="card_share_chooser">Meld-Umfragekarte teilen</string>
 </resources>

@@ -435,7 +435,7 @@ fun CreateRoomScreen(
                                 onClick = { stopQuestionRecording() },
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                             ) {
-                                Text("Save", fontWeight = FontWeight.Bold, color = colors.vermilion)
+                                Text(stringResource(R.string.action_save), fontWeight = FontWeight.Bold, color = colors.vermilion)
                             }
                         } else if (!voicePath.isNullOrBlank()) {
                             Row(
@@ -1159,7 +1159,7 @@ fun CreateRoomScreen(
                     pendingDateMillis = datePickerState.selectedDateMillis ?: System.currentTimeMillis()
                     showTimeDialog = true
                 }) {
-                    Text("Next", color = colors.vermilion)
+                    Text(stringResource(R.string.action_next), color = colors.vermilion)
                 }
             },
             dismissButton = {
@@ -1219,7 +1219,7 @@ fun CreateRoomScreen(
                     showTimeDialog = false
                     timePickerTargetOptionId = null
                 }) {
-                    Text("Apply", color = colors.vermilion)
+                    Text(stringResource(R.string.action_apply), color = colors.vermilion)
                 }
             },
             dismissButton = {

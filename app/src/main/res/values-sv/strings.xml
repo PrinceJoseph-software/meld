@@ -260,4 +260,11 @@
     <string name="error_create_failed">Det gick inte att skapa rummet. Försök igen.</string>
     <string name="card_after_rounds">efter %1$d omgångar</string>
     <string name="action_share_result_card">Dela resultatkort</string>
+    <string name="action_done">Klar</string>
+    <string name="opinion_scope_general">Allmänt</string>
+    <string name="action_save">Spara</string>
+    <string name="action_next">Nästa</string>
+    <string name="action_apply">Tillämpa</string>
+    <string name="card_scan_footer">Skanna för att rösta eller se liveresultat</string>
+    <string name="card_share_chooser">Dela Meld-omröstningskort</string>
 </resources>

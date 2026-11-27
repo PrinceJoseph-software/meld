@@ -260,4 +260,11 @@
     <string name="error_create_failed">Gagal membuat ruang. Coba lagi.</string>
     <string name="card_after_rounds">setelah %1$d putaran</string>
     <string name="action_share_result_card">Bagikan kartu hasil</string>
+    <string name="action_done">Selesai</string>
+    <string name="opinion_scope_general">Umum</string>
+    <string name="action_save">Simpan</string>
+    <string name="action_next">Berikutnya</string>
+    <string name="action_apply">Terapkan</string>
+    <string name="card_scan_footer">Pindai untuk memilih atau melihat hasil langsung</string>
+    <string name="card_share_chooser">Bagikan kartu polling Meld</string>
 </resources>

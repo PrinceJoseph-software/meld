@@ -304,4 +304,11 @@
     <string name="error_create_failed">Couldn\'t create the room. Please try again.</string>
     <string name="card_after_rounds">after %1$d rounds</string>
     <string name="action_share_result_card">Share result card</string>
+    <string name="action_done">Done</string>
+    <string name="opinion_scope_general">General</string>
+    <string name="action_save">Save</string>
+    <string name="action_next">Next</string>
+    <string name="action_apply">Apply</string>
+    <string name="card_scan_footer">Scan to vote or view live results</string>
+    <string name="card_share_chooser">Share Meld poll card</string>
 </resources>

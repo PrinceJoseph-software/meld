@@ -260,4 +260,11 @@
     <string name="error_create_failed">تعذّر إنشاء الغرفة. حاول مرة أخرى.</string>
     <string name="card_after_rounds">بعد %1$d جولات</string>
     <string name="action_share_result_card">مشاركة بطاقة النتيجة</string>
+    <string name="action_done">تم</string>
+    <string name="opinion_scope_general">عام</string>
+    <string name="action_save">حفظ</string>
+    <string name="action_next">التالي</string>
+    <string name="action_apply">تطبيق</string>
+    <string name="card_scan_footer">امسح للتصويت أو لعرض النتائج المباشرة</string>
+    <string name="card_share_chooser">مشاركة بطاقة استطلاع Meld</string>
 </resources>

@@ -1,5 +1,6 @@
 ﻿package io.github.princejoseph.meld.notifications
 
+import android.annotation.SuppressLint
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -98,6 +99,8 @@ object MeldNotificationManager {
             )
             .build()
 
+        // Permission is checked by canPostNotifications() above; runCatching covers a revoke race.
+        @SuppressLint("MissingPermission")
         runCatching {
             NotificationManagerCompat.from(context)
                 .notify("deadline_$safeRoomId".hashCode(), notification)
@@ -142,6 +145,8 @@ object MeldNotificationManager {
             )
             .build()
 
+        // Permission is checked by canPostNotifications() above; runCatching covers a revoke race.
+        @SuppressLint("MissingPermission")
         runCatching {
             NotificationManagerCompat.from(context)
                 .notify("decision_$safeRoomId".hashCode(), notification)

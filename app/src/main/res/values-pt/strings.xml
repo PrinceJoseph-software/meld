@@ -260,4 +260,11 @@
     <string name="error_create_failed">Não foi possível criar a sala. Tente novamente.</string>
     <string name="card_after_rounds">após %1$d rodadas</string>
     <string name="action_share_result_card">Compartilhar cartão do resultado</string>
+    <string name="action_done">Concluir</string>
+    <string name="opinion_scope_general">Geral</string>
+    <string name="action_save">Salvar</string>
+    <string name="action_next">Avançar</string>
+    <string name="action_apply">Aplicar</string>
+    <string name="card_scan_footer">Escaneie para votar ou ver os resultados ao vivo</string>
+    <string name="card_share_chooser">Compartilhar cartão da enquete Meld</string>
 </resources>
