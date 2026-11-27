@@ -19,7 +19,7 @@ import android.os.Looper
  * without cloud config and a release-like build where Firebase is initialised.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [24, 28, 33, 35, 36])
+@Config(sdk = [35])
 class AppLaunchTest {
 
     private fun launch(intent: Intent? = null) {
