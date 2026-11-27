@@ -6,3 +6,5 @@ Disallow: /api/
 Disallow: /cal/
 
 Sitemap: https://meld-one.vercel.app/sitemap.xml
+
+# Summary for AI assistants and agents: https://meld-one.vercel.app/llms.txt
