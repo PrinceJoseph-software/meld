@@ -362,3 +362,6 @@ dialog.studio { width: min(520px, calc(100vw - 24px)); max-height: calc(100dvh -
 
 /* The push track and option swipes are physical left→right gestures/charts in every language. */
 [dir='rtl'] .arena .track, [dir='rtl'] .push-track, [dir='rtl'] .lane-track { direction: ltr; }
+
+/* Arabic and Devanagari letters join; tracking (letter-spacing) breaks the joins. */
+:root[lang='ar'] *, :root[lang='hi'] * { letter-spacing: 0 !important; }
