@@ -135,9 +135,9 @@ a { color: inherit; }
 .avatars { display: flex; }
 .avatar {
   width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #fff;
-  font-size: 10px; font-weight: 700; border: 2px solid var(--surface); margin-left: -6px; flex: none;
+  font-size: 10px; font-weight: 700; border: 2px solid var(--surface); margin-inline-start: -6px; flex: none;
 }
-.avatars .avatar:first-child { margin-left: 0; }
+.avatars .avatar:first-child { margin-inline-start: 0; }
 .avatar.lg { width: 40px; height: 40px; font-size: 14px; margin: 0; }
 
 .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--inset); color: var(--ink-2); }
@@ -173,7 +173,7 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
 .geo-avatar svg { display: block; }
 .geo-avatar.overflow { background: var(--inset); color: var(--ink); font: 600 10px var(--mono); }
 .avatar-stack { display: inline-flex; align-items: center; }
-.avatar-stack > * + * { margin-left: -7px; }
+.avatar-stack > * + * { margin-inline-start: -7px; }
 
 /* Avatar Studio */
 dialog.studio { width: min(520px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; }
@@ -218,7 +218,7 @@ dialog.studio { width: min(520px, calc(100vw - 24px)); max-height: calc(100dvh -
 .level-muted { color: var(--ink-2); }
 .arena-caption { margin: 10px 0 0; }
 .squad { display: inline-flex; align-items: center; gap: 2px; flex: none; }
-.squad > .geo-avatar + .geo-avatar { margin-left: -8px; }
+.squad > .geo-avatar + .geo-avatar { margin-inline-start: -8px; }
 .tug { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
 .track { position: relative; flex: 1; height: 10px; border-radius: 999px; background: var(--inset); }
 .track .tick { position: absolute; top: 2px; width: 2px; height: 6px; background: var(--hairline); transform: translateX(-1px); }
@@ -285,7 +285,7 @@ dialog.studio { width: min(520px, calc(100vw - 24px)); max-height: calc(100dvh -
 .check.ranked { font: 700 12px var(--mono); }
 .ranking { padding: 10px 12px; border-radius: 12px; background: var(--inset); flex-wrap: wrap; gap: 8px; }
 .rounds summary { cursor: pointer; color: var(--ink-2); }
-.rounds ol { margin: 8px 0 0; padding-left: 20px; }
+.rounds ol { margin: 8px 0 0; padding-inline-start: 20px; }
 .rounds li + li { margin-top: 4px; }
 /* Embedded (iframe) */
 .app.embedded { padding-top: 4px; }
@@ -294,10 +294,10 @@ dialog.studio { width: min(520px, calc(100vw - 24px)); max-height: calc(100dvh -
 .landing { max-width: 1120px; margin: 0 auto; padding: max(12px, env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); }
 .l-nav { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 16px; height: 64px; padding: 0 14px; margin: 0 -14px;
   background: color-mix(in srgb, var(--canvas) 88%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 0 0 14px 14px; }
-.l-links { display: flex; gap: 22px; margin-left: auto; font-size: 14px; font-weight: 500; }
+.l-links { display: flex; gap: 22px; margin-inline-start: auto; font-size: 14px; font-weight: 500; }
 .l-links a { text-decoration: none; color: var(--ink-2); }
 .l-links a:hover { color: var(--ink); }
-.l-nav .btn { margin-left: 8px; }
+.l-nav .btn { margin-inline-start: 8px; }
 .l-hero { text-align: center; margin-top: 28px; padding: 56px 24px 44px; background: var(--surface); border: 1px solid var(--hairline); border-radius: 28px; }
 .l-title { font-family: var(--serif); font-weight: 400; font-size: clamp(46px, 8.5vw, 96px); line-height: 1; margin: 18px 0 18px; letter-spacing: -0.01em; }
 .l-lede { max-width: 620px; margin: 0 auto; font-size: clamp(16px, 2.2vw, 19px); line-height: 1.55; color: var(--ink-2); }
@@ -324,7 +324,7 @@ dialog.studio { width: min(520px, calc(100vw - 24px)); max-height: calc(100dvh -
 .l-int { display: flex; flex-direction: column; gap: 6px; }
 .l-section > p.small { text-align: center; }
 .l-trust { display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; align-items: center; padding: 34px; }
-.l-trust .l-h2 { text-align: left; margin-left: 0; }
+.l-trust .l-h2 { text-align: start; margin-inline-start: 0; }
 .l-trust p { line-height: 1.55; margin: 0; }
 .l-facts { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
 .l-facts li { display: flex; align-items: baseline; gap: 12px; padding: 14px 18px; background: var(--inset); border-radius: 14px; }
@@ -342,7 +342,7 @@ dialog.studio { width: min(520px, calc(100vw - 24px)); max-height: calc(100dvh -
 }
 @media (max-width: 600px) {
   .l-links { display: none; }
-  .l-nav .btn { margin-left: auto; }
+  .l-nav .btn { margin-inline-start: auto; }
   .l-grid, .l-steps { grid-template-columns: 1fr; }
   .l-hero { padding: 40px 18px 32px; border-radius: 22px; }
   .l-section { margin-top: 52px; }
@@ -356,3 +356,9 @@ dialog.studio { width: min(520px, calc(100vw - 24px)); max-height: calc(100dvh -
 .l-faq summary::after { content: '+'; color: var(--accent); font-size: 20px; line-height: 1; }
 .l-faq details[open] summary::after { content: '–'; }
 .l-faq details p { margin: 0; padding: 0 20px 18px; line-height: 1.55; }
+.lang-picker { display: inline-flex; align-items: center; gap: 6px; }
+.lang-picker select { background: var(--surface); color: var(--ink); border: 1px solid var(--hairline); border-radius: 10px; padding: 6px 8px; font-size: 13px; cursor: pointer; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* The push track and option swipes are physical left→right gestures/charts in every language. */
+[dir='rtl'] .arena .track, [dir='rtl'] .push-track, [dir='rtl'] .lane-track { direction: ltr; }

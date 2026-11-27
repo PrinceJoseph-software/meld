@@ -5,7 +5,7 @@ Thanks for helping! Meld is an Android app (Kotlin, Jetpack Compose), a web app 
 ## Ways to help
 - **Report a bug or suggest a feature:** [open an issue](https://github.com/PrinceJoseph-software/meld/issues/new/choose).
 - **Pick something up:** issues labelled [`good first issue`](https://github.com/PrinceJoseph-software/meld/labels/good%20first%20issue) or [`help wanted`](https://github.com/PrinceJoseph-software/meld/labels/help%20wanted).
-- **Translate:** Android strings live in `app/src/main/res/values-*/strings.xml`.
+- **Translate:** Android strings live in `app/src/main/res/values-*/strings.xml`; web strings live in `web/src/i18n/locales/*.json` (English is `en.json`). Both cover the same 18 languages.
 - **Security issues:** report them privately, as described in [SECURITY.md](SECURITY.md).
 
 ## Project layout
@@ -53,7 +53,7 @@ CI runs all of these on every pull request.
 - Keep changes focused; one topic per pull request.
 - **Tallying must stay identical** on all platforms: change `web/src/shared/tally.ts` and `app/.../data/RankedChoice.kt` together, and update both test files.
 - **Data model changes** need a Room migration (with a `MigrationTestHelper` test), `firestore.rules` updates plus rule tests, and a note in `docs/DATA_MODEL.md`.
-- User-facing Android text goes in `strings.xml`, never hard-coded.
+- User-facing Android text goes in `strings.xml`, never hard-coded. User-facing web text goes through `t('key')` with the key added to every file in `web/src/i18n/locales/`; `npm run check:i18n` (also run in CI) catches missing keys, broken `{placeholders}` and plural forms.
 - Never commit secrets: keystores, `google-services.json`, service-account JSON or `.env` files.
 
 By contributing you agree your work is released under the [MIT License](LICENSE) and that you'll follow the [Code of Conduct](CODE_OF_CONDUCT.md).

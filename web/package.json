@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "typecheck": "tsc -b && tsc -p tsconfig.api.json",
     "test": "node --experimental-strip-types --test test/tally.test.ts",
+    "check:i18n": "node scripts/check-i18n.mjs",
     "test:api": "npm run build:api && cd .. && firebase emulators:exec --only firestore,auth --project demo-meld \"node --test web/test/api.test.mjs\"",
     "build:api": "node scripts/build-api-test.mjs"
   },

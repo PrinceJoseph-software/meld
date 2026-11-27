@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { GeometricAvatar } from './GeometricAvatar';
+import { t } from '../i18n';
 
 export interface ArenaVoter { key: string; name: string; avatarStyleIndex: number; colorIndex: number }
 export interface ArenaOption { id: string; label: string; count: number; voters: ArenaVoter[] }
@@ -27,7 +28,7 @@ export function PushArena({ options, total, locked, winnerId }: {
   const challenger = options[1] && options[1].count > 0 && !locked && !unanimous ? options[1] : null;
   const pct = total > 0 ? Math.round((leader.count / total) * 100) : 0;
 
-  const level = locked ? 'DECIDED' : unanimous || pct >= 67 ? 'SURGE' : total >= 2 ? 'RALLY' : 'SPARK';
+  const level = t(locked ? 'arena.decided' : unanimous || pct >= 67 ? 'arena.surge' : total >= 2 ? 'arena.rally' : 'arena.spark');
   const tone = locked || unanimous ? 'emerald' : total >= 2 ? 'accent' : 'muted';
 
   return (
@@ -35,20 +36,20 @@ export function PushArena({ options, total, locked, winnerId }: {
       className={`panel arena arena-${tone}`}
       role="button"
       tabIndex={total > 0 ? 0 : -1}
-      aria-label="Decision momentum. Tap to push."
+      aria-label={t('arena.aria')}
       onClick={() => total > 0 && setNudge((n) => n + 1)}
       onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && total > 0 && setNudge((n) => n + 1)}
     >
       <div className="row between">
         <div className="row" style={{ gap: 8 }}>
-          <span className="small mono muted" style={{ letterSpacing: '0.08em' }}>DECISION MOMENTUM</span>
+          <span className="small mono muted" style={{ letterSpacing: '0.08em' }}>{t('arena.title')}</span>
           <span className={`level level-${tone}`}>{level}</span>
         </div>
-        {total > 0 && <span className="small mono accent">Push ›</span>}
+        {total > 0 && <span className="small mono accent">{t('arena.push')}</span>}
       </div>
 
       {total === 0 ? (
-        <p className="small muted" style={{ margin: '10px 0 0' }}>Vote to put your avatar on the push track</p>
+        <p className="small muted" style={{ margin: '10px 0 0' }}>{t('arena.empty')}</p>
       ) : challenger ? (
         <>
           <div className="tug">
@@ -73,7 +74,7 @@ export function PushArena({ options, total, locked, winnerId }: {
             </div>
           </div>
           <p className="small muted arena-caption">
-            {locked && winnerId ? `Pushed across the line: ${leader.label}` : `${leader.label} leading the push • ${pct}%`}
+            {locked && winnerId ? t('arena.pushed', { option: leader.label }) : t('arena.leading', { option: leader.label, pct })}
           </p>
         </>
       )}
@@ -105,7 +106,7 @@ export function DeadlineBanner({ createdAt, deadline, now }: { createdAt: number
   return (
     <div className={`deadline${urgent ? ' urgent' : ''}`} role="timer" aria-live="off">
       <div className="row between small">
-        <span className="mono">{remaining > 0 ? 'Closes in' : 'Deadline reached'}</span>
+        <span className="mono">{remaining > 0 ? t('deadline.closesIn') : t('deadline.reached')}</span>
         <span className="mono count">{text}</span>
       </div>
       <div className="deadline-bar"><span style={{ width: `${(remaining / span) * 100}%` }} /></div>

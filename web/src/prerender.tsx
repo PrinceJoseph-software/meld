@@ -1,7 +1,7 @@
 // Build-time only (see vite.config.ts): renders the landing page to static HTML so search engines
 // and link previewers see real content without running JavaScript, plus JSON-LD structured data.
 import { renderToString } from 'react-dom/server';
-import { FAQ, Landing } from './pages/Landing';
+import { faq, Landing } from './pages/Landing';
 
 const SITE = 'https://meld-one.vercel.app';
 const GITHUB = 'https://github.com/PrinceJoseph-software/meld';
@@ -46,7 +46,7 @@ export function renderLanding(): { html: string; jsonLd: string } {
     {
       '@type': 'FAQPage',
       '@id': `${SITE}/#faq`,
-      mainEntity: FAQ.map((f) => ({
+      mainEntity: faq().map((f) => ({
         '@type': 'Question',
         name: f.q,
         acceptedAnswer: { '@type': 'Answer', text: f.a },
