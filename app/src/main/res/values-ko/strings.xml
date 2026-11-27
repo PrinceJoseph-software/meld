@@ -260,4 +260,11 @@
     <string name="error_create_failed">방을 만들 수 없습니다. 다시 시도해 주세요.</string>
     <string name="card_after_rounds">%1$d라운드 후</string>
     <string name="action_share_result_card">결과 카드 공유</string>
+    <string name="action_done">완료</string>
+    <string name="opinion_scope_general">일반</string>
+    <string name="action_save">저장</string>
+    <string name="action_next">다음</string>
+    <string name="action_apply">적용</string>
+    <string name="card_scan_footer">스캔하여 투표하거나 실시간 결과 보기</string>
+    <string name="card_share_chooser">Meld 투표 카드 공유</string>
 </resources>

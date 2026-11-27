@@ -327,7 +327,7 @@ fun VoiceCommentsSection(
                         view.performTactileTick()
                         selectedOptionId = null
                     },
-                    label = { Text("General", fontSize = 11.sp) },
+                    label = { Text(stringResource(R.string.opinion_scope_general), fontSize = 11.sp) },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = colors.inkPrimary,
                         selectedLabelColor = colors.surfaceElevated

@@ -260,4 +260,11 @@
     <string name="error_create_failed">Impossibile creare la stanza. Riprova.</string>
     <string name="card_after_rounds">dopo %1$d turni</string>
     <string name="action_share_result_card">Condividi scheda risultato</string>
+    <string name="action_done">Fatto</string>
+    <string name="opinion_scope_general">Generale</string>
+    <string name="action_save">Salva</string>
+    <string name="action_next">Avanti</string>
+    <string name="action_apply">Applica</string>
+    <string name="card_scan_footer">Scansiona per votare o vedere i risultati in diretta</string>
+    <string name="card_share_chooser">Condividi la scheda del sondaggio Meld</string>
 </resources>

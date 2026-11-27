@@ -260,4 +260,11 @@
     <string name="error_create_failed">Nie udało się utworzyć pokoju. Spróbuj ponownie.</string>
     <string name="card_after_rounds">po %1$d rundach</string>
     <string name="action_share_result_card">Udostępnij kartę wyniku</string>
+    <string name="action_done">Gotowe</string>
+    <string name="opinion_scope_general">Ogólne</string>
+    <string name="action_save">Zapisz</string>
+    <string name="action_next">Dalej</string>
+    <string name="action_apply">Zastosuj</string>
+    <string name="card_scan_footer">Zeskanuj, aby głosować lub zobaczyć wyniki na żywo</string>
+    <string name="card_share_chooser">Udostępnij kartę ankiety Meld</string>
 </resources>

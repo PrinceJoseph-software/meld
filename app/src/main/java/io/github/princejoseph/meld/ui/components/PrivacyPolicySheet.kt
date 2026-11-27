@@ -1,5 +1,7 @@
 package io.github.princejoseph.meld.ui.components
 
+import io.github.princejoseph.meld.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -93,7 +95,7 @@ fun PrivacyPolicySheet(
                     onClick = onDismiss,
                     modifier = Modifier.testTag("privacy_done_button")
                 ) {
-                    Text("Done", fontWeight = FontWeight.Bold, color = colors.vermilion)
+                    Text(stringResource(R.string.action_done), fontWeight = FontWeight.Bold, color = colors.vermilion)
                 }
             }
 

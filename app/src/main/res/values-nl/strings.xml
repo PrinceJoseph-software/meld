@@ -260,4 +260,11 @@
     <string name="error_create_failed">Kamer kon niet worden gemaakt. Probeer het opnieuw.</string>
     <string name="card_after_rounds">na %1$d rondes</string>
     <string name="action_share_result_card">Resultaatkaart delen</string>
+    <string name="action_done">Klaar</string>
+    <string name="opinion_scope_general">Algemeen</string>
+    <string name="action_save">Opslaan</string>
+    <string name="action_next">Volgende</string>
+    <string name="action_apply">Toepassen</string>
+    <string name="card_scan_footer">Scan om te stemmen of live resultaten te zien</string>
+    <string name="card_share_chooser">Meld-pollkaart delen</string>
 </resources>

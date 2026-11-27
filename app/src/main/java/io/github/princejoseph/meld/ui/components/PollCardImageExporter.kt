@@ -1,5 +1,6 @@
 package io.github.princejoseph.meld.ui.components
 
+import io.github.princejoseph.meld.R
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -31,13 +32,13 @@ object PollCardImageExporter {
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         return runCatching {
-            context.startActivity(Intent.createChooser(intent, "Share Meld Poll Card"))
+            context.startActivity(Intent.createChooser(intent, context.getString(R.string.card_share_chooser)))
         }.isSuccess
     }
 
     fun exportToFile(context: Context, room: RoomDetailsUiModel): File? {
         return runCatching {
-            val bitmap = renderCardBitmap(room)
+            val bitmap = renderCardBitmap(room, context.getString(R.string.card_scan_footer))
             val dir = File(context.cacheDir, "shared_cards").apply { mkdirs() }
             val file = File(dir, "meld_card_${room.id}.png")
             FileOutputStream(file).use { out ->
@@ -55,7 +56,10 @@ object PollCardImageExporter {
         }.getOrNull()
     }
 
-    fun renderCardBitmap(room: RoomDetailsUiModel): Bitmap {
+    fun renderCardBitmap(
+        room: RoomDetailsUiModel,
+        scanFooter: String = "Scan to vote or view live results",
+    ): Bitmap {
         val width = 1080
         val height = 1350
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -239,7 +243,7 @@ object PollCardImageExporter {
             textSize = 24f
             typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
         }
-        canvas.drawText("Scan to vote or view live results", padLeft + 180f, footerTop + 56f, footTitlePaint)
+        canvas.drawText(scanFooter, padLeft + 180f, footerTop + 56f, footTitlePaint)
         canvas.drawText(room.shareUrl, padLeft + 180f, footerTop + 102f, footUrlPaint)
 
         return bitmap

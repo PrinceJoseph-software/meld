@@ -260,4 +260,11 @@
     <string name="error_create_failed">Не удалось создать комнату. Попробуйте ещё раз.</string>
     <string name="card_after_rounds">после %1$d раундов</string>
     <string name="action_share_result_card">Поделиться карточкой результата</string>
+    <string name="action_done">Готово</string>
+    <string name="opinion_scope_general">Общее</string>
+    <string name="action_save">Сохранить</string>
+    <string name="action_next">Далее</string>
+    <string name="action_apply">Применить</string>
+    <string name="card_scan_footer">Отсканируйте, чтобы проголосовать или увидеть результаты</string>
+    <string name="card_share_chooser">Поделиться карточкой опроса Meld</string>
 </resources>

@@ -260,4 +260,11 @@
     <string name="error_create_failed">Oda oluşturulamadı. Lütfen tekrar dene.</string>
     <string name="card_after_rounds">%1$d tur sonra</string>
     <string name="action_share_result_card">Sonuç kartını paylaş</string>
+    <string name="action_done">Bitti</string>
+    <string name="opinion_scope_general">Genel</string>
+    <string name="action_save">Kaydet</string>
+    <string name="action_next">İleri</string>
+    <string name="action_apply">Uygula</string>
+    <string name="card_scan_footer">Oy vermek veya canlı sonuçları görmek için tarayın</string>
+    <string name="card_share_chooser">Meld anket kartını paylaş</string>
 </resources>

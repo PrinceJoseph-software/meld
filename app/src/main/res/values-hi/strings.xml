@@ -260,4 +260,11 @@
     <string name="error_create_failed">रूम नहीं बन सका। फिर से कोशिश करें।</string>
     <string name="card_after_rounds">%1$d राउंड के बाद</string>
     <string name="action_share_result_card">परिणाम कार्ड साझा करें</string>
+    <string name="action_done">हो गया</string>
+    <string name="opinion_scope_general">सामान्य</string>
+    <string name="action_save">सहेजें</string>
+    <string name="action_next">आगे</string>
+    <string name="action_apply">लागू करें</string>
+    <string name="card_scan_footer">वोट करने या लाइव नतीजे देखने के लिए स्कैन करें</string>
+    <string name="card_share_chooser">Meld पोल कार्ड शेयर करें</string>
 </resources>

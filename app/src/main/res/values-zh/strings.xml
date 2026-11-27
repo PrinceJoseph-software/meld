@@ -260,4 +260,11 @@
     <string name="error_create_failed">无法创建房间，请重试。</string>
     <string name="card_after_rounds">经过 %1$d 轮</string>
     <string name="action_share_result_card">分享结果卡片</string>
+    <string name="action_done">完成</string>
+    <string name="opinion_scope_general">常规</string>
+    <string name="action_save">保存</string>
+    <string name="action_next">下一步</string>
+    <string name="action_apply">应用</string>
+    <string name="card_scan_footer">扫码投票或查看实时结果</string>
+    <string name="card_share_chooser">分享 Meld 投票卡片</string>
 </resources>

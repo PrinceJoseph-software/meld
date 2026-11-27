@@ -92,7 +92,7 @@
     <string name="conflict_alert_deadlock">Thành viên quan trọng (%1$s) đang phân tán chưa có khung chung</string>
     <string name="action_switch_conflict_free">Chọn %1$s</string>
     <string name="sync_status_live">ĐỒNG BỘ TRỰC TIẾP</string>
-    <string name="sync_status_syncing">ĐANG ĐỒNG BỘ %1$s…</string>
+    <string name="sync_status_syncing">ĐANG ĐỒNG BỘ %1$d…</string>
     <string name="sync_status_offline_queued">NGOẠI TUYẾN • %1$d ĐANG CHỜ</string>
     <string name="sync_status_offline">NGOẠI TUYẾN • HÀNG ĐỢI CỤ BỘ</string>
     <string name="action_toggle_offline_sim">Chuyển ngoại tuyến</string>
@@ -260,4 +260,11 @@
     <string name="error_create_failed">Không tạo được phòng. Vui lòng thử lại.</string>
     <string name="card_after_rounds">sau %1$d vòng</string>
     <string name="action_share_result_card">Chia sẻ thẻ kết quả</string>
+    <string name="action_done">Xong</string>
+    <string name="opinion_scope_general">Chung</string>
+    <string name="action_save">Lưu</string>
+    <string name="action_next">Tiếp</string>
+    <string name="action_apply">Áp dụng</string>
+    <string name="card_scan_footer">Quét để bình chọn hoặc xem kết quả trực tiếp</string>
+    <string name="card_share_chooser">Chia sẻ thẻ bình chọn Meld</string>
 </resources>
