@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Mark } from '../components/Mark';
 import { navigate } from '../router';
-import { sanitizeCode } from '../model';
+import { sanitizeCode } from '../code';
 
 const GITHUB = 'https://github.com/PrinceJoseph-software/meld';
 const ANDROID = `${GITHUB}/releases/latest`;
@@ -30,6 +30,17 @@ const INTEGRATIONS = [
   { name: 'Weekly polls', body: 'A fresh poll every week, one link' },
 ];
 
+/** Shown on the page and published as FAQPage structured data (keep them identical). */
+export const FAQ: { q: string; a: string }[] = [
+  { q: 'Do I need an account to use Meld?', a: 'No. Nobody signs up: not you, not the people voting. Make a poll, share the link or QR code, and anyone can vote from a phone or laptop browser.' },
+  { q: 'Is Meld free?', a: 'Yes. Meld is free and open source under the MIT license, with no ads, no tracking and no premium tier.' },
+  { q: 'Does Meld work offline?', a: 'Yes. Votes and polls are saved on your device first and sync automatically when you reconnect, on both the Android app and the installable web app.' },
+  { q: 'How does ranked-choice voting work in Meld?', a: 'Each person orders the options. Meld runs an instant runoff: the option with the fewest first choices is removed and its votes move to the next choice, until one option has a majority.' },
+  { q: 'Can Meld find a time that works for everyone?', a: 'Yes. Create a time-slot poll, let people mark the times they can make, and send the winning slot to Google Calendar or Apple Calendar in one tap.' },
+  { q: 'Can I use Meld in Slack or Discord?', a: 'Yes. Type /meld with a question and options to start a poll in a Slack or Discord channel. The result is posted back when the poll closes. Webhooks and website embeds are available too.' },
+  { q: 'Which languages does Meld support?', a: 'The Android app is available in 18 languages, including English, Spanish, French, German, Portuguese, Arabic, Hindi, Japanese, Korean and Chinese.' },
+];
+
 export function Landing() {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +67,7 @@ export function Landing() {
           <a href="#features">Features</a>
           <a href="#how">How it works</a>
           <a href="#integrations">Integrations</a>
+          <a href="#faq">FAQ</a>
           <a href={GITHUB} target="_blank" rel="noreferrer">GitHub</a>
         </nav>
         <a className="btn primary small" href="/app" onClick={go('/app')}>Open Meld</a>
@@ -164,6 +176,19 @@ export function Landing() {
               <li><strong>0</strong><span className="small muted">sign-ups</span></li>
               <li><strong>2</strong><span className="small muted">apps: Android + web</span></li>
             </ul>
+          </div>
+        </section>
+
+        <section id="faq" className="l-section">
+          <div className="eyebrow">Questions</div>
+          <h2 className="l-h2">Frequently asked</h2>
+          <div className="l-faq">
+            {FAQ.map((f) => (
+              <details key={f.q} className="panel">
+                <summary>{f.q}</summary>
+                <p className="muted">{f.a}</p>
+              </details>
+            ))}
           </div>
         </section>
 

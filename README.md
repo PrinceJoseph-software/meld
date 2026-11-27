@@ -2,10 +2,10 @@
   <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png" width="96" height="96" alt="Meld App Logo" />
 </p>
 
-<h1 align="center">Meld</h1>
+<h1 align="center">Meld: free group polls with no sign-up</h1>
 
 <p align="center">
-  <strong>Instant, zero-login group decisions and time coordination — offline-first, on Android and the web.</strong>
+  <strong>Open-source poll maker for groups: ranked-choice voting, time-slot scheduling and live results. No accounts, works offline, on Android and the web.</strong>
 </p>
 
 <p align="center">
