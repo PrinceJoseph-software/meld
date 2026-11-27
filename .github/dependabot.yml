@@ -1,4 +1,6 @@
 # Keeps dependencies patched. Updates arrive as grouped pull requests once a month.
+# Major versions are ignored here: they need a deliberate upgrade (and a green CI run),
+# so open an issue for one instead of letting a bot propose it.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -8,13 +10,21 @@ updates:
   - package-ecosystem: gradle
     directory: /
     schedule: { interval: monthly }
-    open-pull-requests-limit: 5
     groups: { android: { patterns: ["*"], update-types: ["minor", "patch"] } }
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: npm
     directory: /web
     schedule: { interval: monthly }
     groups: { web: { patterns: ["*"], update-types: ["minor", "patch"] } }
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: npm
     directory: /rules-tests
     schedule: { interval: monthly }
-    groups: { rules-tests: { patterns: ["*"] } }
+    groups: { rules-tests: { patterns: ["*"], update-types: ["minor", "patch"] } }
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
