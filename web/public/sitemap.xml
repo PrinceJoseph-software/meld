@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://meld-one.vercel.app/</loc><changefreq>monthly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://meld-one.vercel.app/app</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
+  <url>
+    <loc>https://meld-one.vercel.app/</loc>
+    <lastmod>2026-11-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <image:image><image:loc>https://meld-one.vercel.app/og.png</image:loc></image:image>
+    <video:video>
+      <video:thumbnail_loc>https://meld-one.vercel.app/media/hero-poster.jpg</video:thumbnail_loc>
+      <video:title>Meld in 45 seconds: a group poll from question to decision</video:title>
+      <video:description>Two people create a ranked-choice poll, vote live from a shared link, keep voting offline and crown the winner with Meld.</video:description>
+      <video:content_loc>https://meld-one.vercel.app/media/meld-demo-16x9.mp4</video:content_loc>
+      <video:duration>48</video:duration>
+    </video:video>
+  </url>
 </urlset>

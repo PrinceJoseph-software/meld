@@ -13,7 +13,7 @@
     },
     {
       "source": "/((?!api/|\\.well-known/|assets/|fonts/|icons/|media/|robots\\.txt|sitemap\\.xml|og\\.png|sw\\.js|workbox-|manifest\\.webmanifest|favicon\\.png).*)",
-      "destination": "/index.html"
+      "destination": "/app.html"
     }
   ],
   "headers": [

@@ -83,10 +83,7 @@ export interface RoomState {
 const HOUR = 60 * 60 * 1000;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
-export function sanitizeCode(raw: string): string | null {
-  const c = raw.trim().replace(/^#/, '').toUpperCase();
-  return /^[A-Z0-9]{4,10}$/.test(c) ? c : null;
-}
+export { sanitizeCode } from './code';
 
 function randomCode() {
   const bytes = crypto.getRandomValues(new Uint8Array(6));

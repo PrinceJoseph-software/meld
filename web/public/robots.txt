@@ -1,9 +1,7 @@
+# Meld: the landing page is indexed. App screens (/app, /r/, /s/, /embed/) are reachable for
+# link previews but carry a noindex tag. API and calendar feeds are not for crawlers.
 User-agent: *
-Allow: /$
-Allow: /app
-Disallow: /r/
-Disallow: /s/
-Disallow: /embed/
+Allow: /
 Disallow: /api/
 Disallow: /cal/
 
