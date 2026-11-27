@@ -10,9 +10,9 @@
   --ink: #121214;
   --ink-2: #5C5C66;
   --hairline: #E2DFD7;
-  --accent: #FF451A;
+  --accent: #C8320C; /* 5.4:1 on white, AA for small text */
   --accent-ink: #FFFFFF;
-  --accent-soft: rgba(255, 69, 26, 0.10);
+  --accent-soft: rgba(200, 50, 12, 0.10);
   --emerald: #0D9488;
   --dot: rgba(92, 92, 102, 0.26);
   --warn: #D97706;
@@ -25,13 +25,13 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     --canvas: #0B0B0D; --surface: #141417; --inset: #1E1E22; --ink: #F4F4F6; --ink-2: #8E8E98;
-    --hairline: rgba(255, 255, 255, 0.09); --accent: #FF572E; --accent-soft: rgba(255, 87, 46, 0.15);
+    --hairline: rgba(255, 255, 255, 0.09); --accent: #FF572E; --accent-ink: #0B0B0D; --accent-soft: rgba(255, 87, 46, 0.15);
     --emerald: #14B8A6; --dot: rgba(255, 255, 255, 0.20); color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
   --canvas: #0B0B0D; --surface: #141417; --inset: #1E1E22; --ink: #F4F4F6; --ink-2: #8E8E98;
-  --hairline: rgba(255, 255, 255, 0.09); --accent: #FF572E; --accent-soft: rgba(255, 87, 46, 0.15);
+  --hairline: rgba(255, 255, 255, 0.09); --accent: #FF572E; --accent-ink: #0B0B0D; --accent-soft: rgba(255, 87, 46, 0.15);
   --emerald: #14B8A6; --dot: rgba(255, 255, 255, 0.20); color-scheme: dark;
 }
 
