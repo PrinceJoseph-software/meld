@@ -74,7 +74,7 @@ export function RoomPage({ code, embedded = false }: { code: string | null; embe
           <div className="eyebrow">Room not found</div>
           <h1 className="title">That code doesn't exist</h1>
           <p className="muted">Check the code with whoever shared it.</p>
-          {!embedded && <button className="btn primary" onClick={() => navigate('/')}>Back home</button>}
+          {!embedded && <button className="btn primary" onClick={() => navigate('/app')}>Back home</button>}
         </section>
       </>
     );

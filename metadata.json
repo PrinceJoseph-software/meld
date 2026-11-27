@@ -1,6 +1,0 @@
-{
-  "name": "Meld",
-  "description": "Instant, zero-login group decisions and time coordination.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

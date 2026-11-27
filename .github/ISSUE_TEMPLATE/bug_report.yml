@@ -1,0 +1,55 @@
+name: Bug report
+description: Something in Meld is broken or behaves unexpectedly
+title: "[Bug] "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this! **Found a security problem?** Please don't open an issue. Follow [SECURITY.md](https://github.com/PrinceJoseph-software/meld/blob/main/SECURITY.md) instead.
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where did it happen?
+      multiple: true
+      options:
+        - Android app
+        - Web app (browser)
+        - Web app (installed / PWA)
+        - Slack command
+        - Discord command
+        - Webhook / embed / calendar feed
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you see, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Create a ranked poll with 3 options
+        2. Open the link on a second phone
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version and device
+      placeholder: "Meld 1.1.0 · Pixel 7 · Android 15  (or: Chrome 130 on Windows)"
+  - type: dropdown
+    id: online
+    attributes:
+      label: Were you online?
+      options: ["Online", "Offline", "Switched between them", "Not sure"]
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots, room code, or anything else
+      description: A room code helps us look into it. Never paste passwords, keys or webhook secrets.

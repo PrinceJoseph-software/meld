@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Try Meld
+    url: https://meld-one.vercel.app/
+    about: Open the live web app.
+  - name: Report a security vulnerability
+    url: https://github.com/PrinceJoseph-software/meld/security/advisories/new
+    about: Please report security issues privately, not as a public issue.

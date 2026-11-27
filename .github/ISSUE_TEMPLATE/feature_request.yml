@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest an improvement or a new capability
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the group decision or scheduling situation. The problem matters more than the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help?
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options: ["Android app", "Web app", "Voting & results", "Time slots & calendar", "Avatars & identity", "Slack / Discord / webhooks", "Accessibility", "Translations", "Other"]
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Anything you use today instead?
