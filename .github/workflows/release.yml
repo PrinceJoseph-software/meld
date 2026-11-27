@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'
+  # Rebuild a release from the Actions tab: choose "Use workflow from: Tags → vX.Y.Z".
+  workflow_dispatch:
 
 permissions:
   contents: write
