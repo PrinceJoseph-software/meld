@@ -16,7 +16,7 @@
       "destination": "/privacy.html"
     },
     {
-      "source": "/((?!api/|\\.well-known/|assets/|fonts/|icons/|media/|robots\\.txt|sitemap\\.xml|og\\.png|google[0-9a-f]+\\.html|sw\\.js|workbox-|manifest\\.webmanifest|favicon\\.png).*)",
+      "source": "/((?!api/|\\.well-known/|assets/|fonts/|icons/|media/|robots\\.txt|llms\\.txt|sitemap\\.xml|og\\.png|google[0-9a-f]+\\.html|sw\\.js|workbox-|manifest\\.webmanifest|favicon\\.png).*)",
       "destination": "/app.html"
     }
   ],

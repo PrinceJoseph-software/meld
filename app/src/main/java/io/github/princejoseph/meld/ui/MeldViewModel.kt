@@ -80,64 +80,11 @@ data class CalendarSyncUiState(
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MeldViewModel(application: Application) : AndroidViewModel(application) {
-    private val repository: MeldRepository
     private val identityStore = IdentityStore(application)
-
-    init {
+    private val repository: MeldRepository = run {
         MeldNotificationManager.ensureChannels(application)
         val db = MeldDatabase.getInstance(application)
-        val connectivityObserver = ConnectivityObserver(application)
-        repository = MeldRepository(db.meldDao(), identityStore, connectivityObserver, application)
-        viewModelScope.launch {
-            val id = repository.initIdentity()
-            if (DeviceCalendarReader.hasCalendarPermission(application)) {
-                val now = System.currentTimeMillis()
-                val sevenDaysLater = now + 7L * 24L * 60L * 60L * 1000L
-                val busy = withContext(Dispatchers.IO) {
-                    DeviceCalendarReader.readBusyIntervals(application, now, sevenDaysLater)
-                }
-                if (busy.isNotEmpty()) {
-                    repository.setParticipantCommitments(id.uid, id.effectiveName, busy)
-                }
-            }
-        }
-
-        // Background sync watcher: flush pending outbox votes automatically on reconnect
-        viewModelScope.launch {
-            combine(
-                repository.isOnlineFlow,
-                repository.allPendingCountFlow
-            ) { online, pendingCount ->
-                online to pendingCount
-            }.collectLatest { (online, pendingCount) ->
-                if (online && pendingCount > 0) {
-                    repository.flushPendingVotes()
-                }
-            }
-        }
-
-        // Cloud: push anything created offline whenever we (re)gain connectivity.
-        viewModelScope.launch {
-            repository.isOnlineFlow.distinctUntilChanged().collectLatest { online ->
-                if (online) runCatching { repository.resyncLocalState() }
-            }
-        }
-
-        // Cloud: live-mirror the open room's server state (votes from other people) into Room.
-        viewModelScope.launch {
-            _activeRoomId.flatMapLatest { id ->
-                if (id == null) emptyFlow() else repository.mirrorRemoteRoom(id)
-            }.collect { }
-        }
-
-        // Auto-close any unlocked poll whose deadline has expired
-        viewModelScope.launch {
-            repository.recentRoomsFlow.collectLatest { rooms ->
-                rooms.filter { !it.isLocked && it.isExpired }.forEach { expired ->
-                    repository.finalizeExpiredRoomIfNeeded(expired.id)
-                }
-            }
-        }
+        MeldRepository(db.meldDao(), identityStore, ConnectivityObserver(application), application)
     }
 
     val identity: StateFlow<VoterIdentity> = repository.identityFlow
@@ -401,6 +348,62 @@ class MeldViewModel(application: Application) : AndroidViewModel(application) {
 
     val autoCalendar: StateFlow<Boolean> = identityStore.autoCalendarFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    // Must come after every property above: Kotlin runs property initialisers and init blocks
+    // top to bottom, and these coroutines can start immediately (Dispatchers.Main.immediate),
+    // so a property declared below would still be null here. That crashed v1.1.0-1.1.2 on launch.
+    init {
+        viewModelScope.launch {
+            val id = repository.initIdentity()
+            if (DeviceCalendarReader.hasCalendarPermission(application)) {
+                val now = System.currentTimeMillis()
+                val sevenDaysLater = now + 7L * 24L * 60L * 60L * 1000L
+                val busy = withContext(Dispatchers.IO) {
+                    DeviceCalendarReader.readBusyIntervals(application, now, sevenDaysLater)
+                }
+                if (busy.isNotEmpty()) {
+                    repository.setParticipantCommitments(id.uid, id.effectiveName, busy)
+                }
+            }
+        }
+
+        // Background sync watcher: flush pending outbox votes automatically on reconnect
+        viewModelScope.launch {
+            combine(
+                repository.isOnlineFlow,
+                repository.allPendingCountFlow
+            ) { online, pendingCount ->
+                online to pendingCount
+            }.collectLatest { (online, pendingCount) ->
+                if (online && pendingCount > 0) {
+                    repository.flushPendingVotes()
+                }
+            }
+        }
+
+        // Cloud: push anything created offline whenever we (re)gain connectivity.
+        viewModelScope.launch {
+            repository.isOnlineFlow.distinctUntilChanged().collectLatest { online ->
+                if (online) runCatching { repository.resyncLocalState() }
+            }
+        }
+
+        // Cloud: live-mirror the open room's server state (votes from other people) into Room.
+        viewModelScope.launch {
+            _activeRoomId.flatMapLatest { id ->
+                if (id == null) emptyFlow() else repository.mirrorRemoteRoom(id)
+            }.collect { }
+        }
+
+        // Auto-close any unlocked poll whose deadline has expired
+        viewModelScope.launch {
+            repository.recentRoomsFlow.collectLatest { rooms ->
+                rooms.filter { !it.isLocked && it.isExpired }.forEach { expired ->
+                    repository.finalizeExpiredRoomIfNeeded(expired.id)
+                }
+            }
+        }
+    }
 
     fun setAutoCalendar(enabled: Boolean) {
         viewModelScope.launch { identityStore.setAutoCalendar(enabled) }

@@ -1,0 +1,29 @@
+# Meld
+
+> Meld is a free, open-source group decision app: make a poll, share a link or QR code, and everyone votes from any phone or laptop with no sign-up. It supports quick polls, ranked-choice (instant-runoff) voting, time-slot scheduling with calendar export, weekly recurring polls, anonymous mode and live results. It works offline and syncs when back online. Available as a web app (installable PWA) and an Android app, in 18 languages. No accounts, ads or analytics.
+
+Key facts:
+- Price: free. License: MIT. Source: https://github.com/PrinceJoseph-software/meld
+- Nobody signs up, neither the creator nor the voters. Rooms are opened by their 4–10 character code or link (https://meld-one.vercel.app/r/CODE).
+- Ranked choice uses instant runoff: the option with the fewest first choices is eliminated and its votes move to the next choice until one option has a majority.
+- Integrations: Slack and Discord `/meld` command, signed decision webhooks, website embeds (`/embed/CODE`), calendar feeds (`/cal/CODE.ics`).
+- Languages: English, Arabic, German, Spanish, French, Hindi, Indonesian, Italian, Japanese, Korean, Dutch, Polish, Portuguese, Russian, Swedish, Turkish, Vietnamese, Chinese.
+
+## Use Meld
+
+- [Start a poll](https://meld-one.vercel.app/app): the web app; create a room and share the link
+- [Join a poll](https://meld-one.vercel.app/r/CODE): replace CODE with the room code you were given
+- [Android app](https://github.com/PrinceJoseph-software/meld/releases/latest): latest signed APK
+
+## Docs
+
+- [Overview and FAQ](https://meld-one.vercel.app/): features, how it works, frequently asked questions
+- [Privacy policy](https://meld-one.vercel.app/privacy): what stays on the device and what is shared through rooms
+- [Integrations guide](https://github.com/PrinceJoseph-software/meld/blob/main/docs/INTEGRATIONS.md): Slack, Discord, webhooks, embeds, calendar feeds
+- [Setup guide](https://github.com/PrinceJoseph-software/meld/blob/main/docs/SETUP.md): self-hosting with Firebase and Vercel
+- [Data model](https://github.com/PrinceJoseph-software/meld/blob/main/docs/DATA_MODEL.md): rooms, options, ballots and security rules
+
+## Optional
+
+- [README](https://github.com/PrinceJoseph-software/meld/blob/main/README.md): project overview for developers
+- [Contributing](https://github.com/PrinceJoseph-software/meld/blob/main/CONTRIBUTING.md): building, testing and translating
