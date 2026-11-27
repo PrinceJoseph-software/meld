@@ -4,6 +4,7 @@ import { useOnline, usePath } from './router';
 import { Home } from './pages/Home';
 import { RoomPage } from './pages/Room';
 import { Landing } from './pages/Landing';
+import { Privacy } from './pages/Privacy';
 import { TopBar } from './components/Logo';
 import { getSeries, sanitizeCode } from './model';
 import { navigate } from './router';
@@ -23,6 +24,7 @@ export default function App() {
 
   // Marketing page at the root; the app itself lives at /app. Installed PWAs start at /app.
   if (path === '/' || path === '') return <Landing />;
+  if (/^\/privacy\/?$/.test(path)) return <Privacy />;
 
   if (!firebaseConfigured) {
     return (

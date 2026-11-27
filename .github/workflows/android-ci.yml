@@ -59,6 +59,8 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run check:i18n
+      - name: Privacy policy page matches PRIVACY_POLICY.md
+        run: cmp ../PRIVACY_POLICY.md src/content/privacy.md
       - run: npm run typecheck
       - run: npm run build
 

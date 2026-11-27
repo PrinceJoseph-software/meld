@@ -241,7 +241,7 @@ export function Home() {
       )}
 
       <div className="small muted row" style={{ justifyContent: 'center', marginTop: 20, gap: 12, flexWrap: 'wrap' }}>
-        <span>{t('home.footer')} <a href="https://github.com/PrinceJoseph-software/meld/blob/main/PRIVACY_POLICY.md">{t('common.privacy')}</a></span>
+        <span>{t('home.footer')} <a href="/privacy" onClick={(e) => { e.preventDefault(); navigate('/privacy'); }}>{t('common.privacy')}</a></span>
         <LanguagePicker />
       </div>
 

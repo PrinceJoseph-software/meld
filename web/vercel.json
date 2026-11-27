@@ -12,6 +12,10 @@
       "destination": "/api/ics?series=:id"
     },
     {
+      "source": "/privacy",
+      "destination": "/privacy.html"
+    },
+    {
       "source": "/((?!api/|\\.well-known/|assets/|fonts/|icons/|media/|robots\\.txt|sitemap\\.xml|og\\.png|google[0-9a-f]+\\.html|sw\\.js|workbox-|manifest\\.webmanifest|favicon\\.png).*)",
       "destination": "/app.html"
     }

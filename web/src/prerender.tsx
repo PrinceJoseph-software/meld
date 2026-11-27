@@ -2,6 +2,9 @@
 // and link previewers see real content without running JavaScript, plus JSON-LD structured data.
 import { renderToString } from 'react-dom/server';
 import { faq, Landing } from './pages/Landing';
+import { Privacy } from './pages/Privacy';
+
+export const renderPrivacy = (): string => renderToString(<Privacy />);
 
 const SITE = 'https://meld-one.vercel.app';
 const GITHUB = 'https://github.com/PrinceJoseph-software/meld';
