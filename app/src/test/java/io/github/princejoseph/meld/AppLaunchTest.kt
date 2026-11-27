@@ -47,7 +47,13 @@ class AppLaunchTest {
                     .build(),
             )
         }
-        launch()
+        try {
+            launch()
+        } finally {
+            // Don't leak a live Firebase/Firestore into later tests in this JVM.
+            FirebaseApp.getApps(ctx).forEach { it.delete() }
+            io.github.princejoseph.meld.data.RemoteSyncGatewayFactory.resetForTests()
+        }
     }
 
     @Test

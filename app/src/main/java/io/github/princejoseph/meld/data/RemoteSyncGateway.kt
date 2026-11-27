@@ -91,4 +91,9 @@ object RemoteSyncGatewayFactory {
                 ?: NoOpRemoteSyncGateway).also { instance = it }
         }
     }
+
+    /** Tests only: forget the cached gateway so the next create() re-reads the Firebase state. */
+    internal fun resetForTests() {
+        instance = null
+    }
 }
