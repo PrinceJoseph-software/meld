@@ -1,11 +1,13 @@
-// Records the Meld promo: two real browsers (Alice = creator, dark; Bob = voter, light)
-// against the local Firebase emulators. Writes alice.webm, bob.webm and timeline.json.
+// Records the Meld promo: two real browsers (Alice = creator, dark; Bob = voter, light).
+// By default it records the live site (DEMO_BASE, default https://meld-one.vercel.app), which
+// creates one demo room in that project. Set DEMO_DOMAIN to record a local build instead.
+// Writes out/alice.webm, out/bob.webm, out/result_card.png and out/timeline.json.
 const { chromium } = require('playwright');
 const fs = require('fs');
 const OUT = __dirname + '/out';
 fs.mkdirSync(OUT, { recursive: true });
-const DOMAIN = process.env.DEMO_DOMAIN || 'meld.local';
-const BASE = `http://${DOMAIN}`;
+const DOMAIN = process.env.DEMO_DOMAIN; // e.g. meld.local, mapped to 127.0.0.1
+const BASE = DOMAIN ? `http://${DOMAIN}` : (process.env.DEMO_BASE || 'https://meld-one.vercel.app');
 
 // Visible tap ripples, so viewers can see where the "finger" goes.
 const TAP_FX = () => {
@@ -22,7 +24,7 @@ const TAP_FX = () => {
 
 (async () => {
   const browser = await chromium.launch({
-    args: [`--host-resolver-rules=MAP ${DOMAIN} 127.0.0.1`, `--unsafely-treat-insecure-origin-as-secure=${BASE}`],
+    args: DOMAIN ? [`--host-resolver-rules=MAP ${DOMAIN} 127.0.0.1`, `--unsafely-treat-insecure-origin-as-secure=${BASE}`] : [],
   });
   const mk = async (scheme) => {
     const ctx = await browser.newContext({
@@ -56,7 +58,7 @@ const TAP_FX = () => {
 
   // Both phones on the home screen
   scene('No account. No sign-up.');
-  await Promise.all([a.goto(BASE + '/'), b.goto(BASE + '/')]);
+  await Promise.all([a.goto(BASE + '/app'), b.goto(BASE + '/app')]);
   await pause(2200);
 
   // 1. Avatar Studio
