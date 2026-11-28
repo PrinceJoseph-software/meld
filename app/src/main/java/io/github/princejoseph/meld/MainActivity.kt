@@ -212,6 +212,7 @@ private fun MeldAppShell(
                             viewModel.closeRoom()
                         }
                     },
+                    playIntro = false, // the full-screen splash docks the assembled mark here
                     modifier = Modifier.alpha(if (launchRevealFinished) 1f else 0f)
                 )
 
@@ -330,12 +331,6 @@ private fun MeldAppShell(
             }
         }
 
-        // Non-blocking launch circle-joining choreography (zero loading screen; home screen stays visible & interactive)
-        if (!launchRevealFinished) {
-            LaunchCircleJoiningOverlay(
-                onFinished = { launchRevealFinished = true }
-            )
-        }
     }
 
     // Rendered outside the status-bar-padded shell so the tour is truly edge-to-edge:
@@ -400,226 +395,10 @@ private fun MeldAppShell(
             onDismiss = { showPrivacySheet = false }
         )
     }
-}
 
-/**
- * Non-blocking launch choreography matching the top-left MeldLogo:
- * Two circles enter fast from opposite sides of the header, join/hit at center-top with a shockwave,
- * swirl around each other, morph into the interlocking physical Meld capsules + diamond, and dock into
- * the exact top-left MeldLogo coordinates without ever blocking touch input on the Home Screen.
- */
-@Composable
-private fun LaunchCircleJoiningOverlay(
-    onFinished: () -> Unit
-) {
-    val colors = MeldTheme.colors
-    val sideOffsetFraction = remember { Animatable(0.42f) }
-    val rollAngle = remember { Animatable(360f) }
-    val impactSquash = remember { Animatable(1f) }
-    val orbitRadiusDp = remember { Animatable(0f) }
-    val swirlAngleDeg = remember { Animatable(0f) }
-    val morphToCapsule = remember { Animatable(0f) }
-    val diamondAppear = remember { Animatable(0f) }
-    val shockwaveProgress = remember { Animatable(1f) }
-    val dockToTopLeft = remember { Animatable(0f) }
-
-    LaunchedEffect(Unit) {
-        coroutineScope {
-            // Brief settle for Android window open transition
-            delay(180L)
-
-            // Phase 1: Fast roll-in from opposite sides of the screen
-            val rollIn = launch {
-                sideOffsetFraction.animateTo(
-                    targetValue = 0f,
-                    animationSpec = tween(
-                        durationMillis = 300,
-                        easing = CubicBezierEasing(0.20f, 0.96f, 0.35f, 1.0f)
-                    )
-                )
-            }
-            launch {
-                rollAngle.animateTo(0f, tween(310, easing = FastOutSlowInEasing))
-            }
-            rollIn.join()
-
-            // Phase 2: Collision shockwave + squash + bounce into swirl orbit
-            launch {
-                shockwaveProgress.snapTo(0f)
-                shockwaveProgress.animateTo(1f, tween(320, easing = FastOutSlowInEasing))
-            }
-            launch {
-                impactSquash.snapTo(0.82f)
-                impactSquash.animateTo(1f, spring(stiffness = 620f, dampingRatio = 0.58f))
-            }
-            orbitRadiusDp.snapTo(8f)
-            orbitRadiusDp.animateTo(13f, tween(90, easing = FastOutSlowInEasing))
-
-            // Phase 3: Swirl around each other + morph into interlocking Meld icon
-            val swirl = launch {
-                swirlAngleDeg.animateTo(
-                    targetValue = 390f,
-                    animationSpec = tween(420, easing = CubicBezierEasing(0.32f, 0f, 0.2f, 1f))
-                )
-            }
-            val spiral = launch {
-                delay(110L)
-                orbitRadiusDp.animateTo(0f, spring(stiffness = 300f, dampingRatio = 0.72f))
-            }
-            launch {
-                delay(200L)
-                morphToCapsule.animateTo(1f, spring(stiffness = 460f, dampingRatio = 0.68f))
-            }
-            launch {
-                delay(320L)
-                diamondAppear.animateTo(1f, spring(stiffness = 520f, dampingRatio = 0.62f))
-            }
-            swirl.join()
-            spiral.join()
-
-            // Phase 4: Dock cleanly into top-left MeldLogo slot (34dp left center, 28dp top center)
-            dockToTopLeft.animateTo(
-                targetValue = 1f,
-                animationSpec = spring(stiffness = 420f, dampingRatio = 0.80f)
-            )
-            onFinished()
-        }
-    }
-
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val dock = dockToTopLeft.value.coerceIn(0f, 1f)
-        val startCenter = Offset(size.width / 2f, 28.dp.toPx())
-        val endCenter = Offset(16.dp.toPx() + 18.dp.toPx(), 28.dp.toPx())
-        val pivotCenter = Offset(
-            lerp(startCenter.x, endCenter.x, dock),
-            lerp(startCenter.y, endCenter.y, dock)
-        )
-
-        val baseSizePx = lerp(46.dp.toPx(), 36.dp.toPx(), dock)
-        val m = morphToCapsule.value.coerceIn(0f, 1f)
-        val circleDiameter = baseSizePx * 0.36f
-        val finalW = baseSizePx * 0.74f
-        val finalH = baseSizePx * 0.30f
-        val capsuleW = lerp(circleDiameter, finalW, m)
-        val capsuleH = lerp(circleDiameter, finalH, m)
-        val corner = CornerRadius(capsuleH / 2f, capsuleH / 2f)
-        val cutoutPx = 2.dp.toPx() * m
-
-        val sidePx = sideOffsetFraction.value * size.width
-        val orbitPx = orbitRadiusDp.value.dp.toPx()
-        val orbitRad = Math.toRadians(swirlAngleDeg.value.toDouble())
-        val orbitDx = (orbitPx * cos(orbitRad)).toFloat()
-        val orbitDy = (orbitPx * sin(orbitRad)).toFloat()
-
-        val squashX = impactSquash.value
-        val squashY = if (squashX < 0.999f) 1f + (1f - squashX) * 0.85f else 1f
-
-        val shock = shockwaveProgress.value
-        if (shock < 0.98f) {
-            drawCircle(
-                color = colors.vermilion.copy(alpha = (1f - shock) * 0.7f),
-                radius = lerp(baseSizePx * 0.2f, baseSizePx * 0.95f, shock),
-                center = pivotCenter,
-                style = Stroke(width = lerp(2.4f, 0.8f, shock).dp.toPx())
-            )
-        }
-
-        // Left Ink disc
-        withTransform({
-            translate(
-                left = -sidePx - orbitDx,
-                top = -orbitDy
-            )
-            scale(squashX, squashY, pivot = pivotCenter)
-            rotate(35f * m - rollAngle.value, pivot = pivotCenter)
-        }) {
-            drawRoundRect(
-                color = Color.Black.copy(alpha = 0.14f),
-                topLeft = Offset(
-                    pivotCenter.x - capsuleW / 2f + 0.8.dp.toPx(),
-                    pivotCenter.y - capsuleH / 2f + 1.4.dp.toPx()
-                ),
-                size = Size(capsuleW, capsuleH),
-                cornerRadius = corner
-            )
-            drawRoundRect(
-                color = colors.inkPrimary,
-                topLeft = Offset(pivotCenter.x - capsuleW / 2f, pivotCenter.y - capsuleH / 2f),
-                size = Size(capsuleW, capsuleH),
-                cornerRadius = corner
-            )
-            drawRoundRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.22f), Color.Transparent)
-                ),
-                topLeft = Offset(pivotCenter.x - capsuleW / 2f, pivotCenter.y - capsuleH / 2f),
-                size = Size(capsuleW, capsuleH),
-                cornerRadius = corner
-            )
-        }
-
-        // Right Vermilion disc
-        withTransform({
-            translate(
-                left = sidePx + orbitDx,
-                top = orbitDy
-            )
-            scale(squashX, squashY, pivot = pivotCenter)
-            rotate(-35f * m + rollAngle.value, pivot = pivotCenter)
-        }) {
-            if (cutoutPx > 0.2f) {
-                drawRoundRect(
-                    color = colors.canvas,
-                    topLeft = Offset(
-                        pivotCenter.x - capsuleW / 2f - cutoutPx,
-                        pivotCenter.y - capsuleH / 2f - cutoutPx
-                    ),
-                    size = Size(capsuleW + cutoutPx * 2f, capsuleH + cutoutPx * 2f),
-                    cornerRadius = CornerRadius((capsuleH + cutoutPx * 2f) / 2f)
-                )
-            }
-            drawRoundRect(
-                color = colors.vermilion.copy(alpha = 0.24f),
-                topLeft = Offset(
-                    pivotCenter.x - capsuleW / 2f + 0.8.dp.toPx(),
-                    pivotCenter.y - capsuleH / 2f + 1.4.dp.toPx()
-                ),
-                size = Size(capsuleW, capsuleH),
-                cornerRadius = corner
-            )
-            drawRoundRect(
-                color = colors.vermilion,
-                topLeft = Offset(pivotCenter.x - capsuleW / 2f, pivotCenter.y - capsuleH / 2f),
-                size = Size(capsuleW, capsuleH),
-                cornerRadius = corner
-            )
-            drawRoundRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.28f), Color.Transparent)
-                ),
-                topLeft = Offset(pivotCenter.x - capsuleW / 2f, pivotCenter.y - capsuleH / 2f),
-                size = Size(capsuleW, capsuleH),
-                cornerRadius = corner
-            )
-        }
-
-        // Center interlocking diamond
-        val dScale = diamondAppear.value.coerceAtLeast(0f)
-        if (dScale > 0.05f) {
-            val diamondRadius = finalH * 0.40f * dScale
-            val diamondPath = Path().apply {
-                moveTo(pivotCenter.x, pivotCenter.y - diamondRadius)
-                lineTo(pivotCenter.x + diamondRadius, pivotCenter.y)
-                lineTo(pivotCenter.x, pivotCenter.y + diamondRadius)
-                lineTo(pivotCenter.x - diamondRadius, pivotCenter.y)
-                close()
-            }
-            drawPath(path = diamondPath, color = colors.canvas)
-            drawPath(
-                path = diamondPath,
-                color = colors.inkPrimary,
-                style = Stroke(width = 1.4.dp.toPx())
-            )
-        }
+    // Full-screen launch animation on cold start, drawn above everything (incl. the first-run tour).
+    if (!launchRevealFinished) {
+        io.github.princejoseph.meld.ui.components.MeldSplash(onFinished = { launchRevealFinished = true })
     }
 }
+
