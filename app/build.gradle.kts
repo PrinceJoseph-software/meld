@@ -75,7 +75,13 @@ android {
     compose = true
     buildConfig = true
   }
-  testOptions { unitTests { isIncludeAndroidResources = true } }
+  testOptions {
+    unitTests {
+      isIncludeAndroidResources = true
+      // Optional: -Pmeld.splashFramesDir=/path saves SplashFramesTest frames as PNGs for review.
+      all { test -> (project.findProperty("meld.splashFramesDir") as String?)?.let { test.systemProperty("meld.splashFramesDir", it) } }
+    }
+  }
   // Robolectric reads assets from the debug variant; schemas are needed by MigrationTestHelper.
   sourceSets { getByName("debug").assets.directories.add("$projectDir/schemas") }
   dependenciesInfo {

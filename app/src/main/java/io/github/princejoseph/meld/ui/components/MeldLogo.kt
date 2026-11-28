@@ -62,7 +62,9 @@ import kotlin.math.sin
 fun MeldLogo(
     pulseTrigger: Int,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** False when something else (the launch splash) already animated the mark into place. */
+    playIntro: Boolean = true
 ) {
     val colors = MeldTheme.colors
     val view = LocalView.current
@@ -90,6 +92,20 @@ fun MeldLogo(
     val wordmarkAlpha = remember { Animatable(1f) }
 
     LaunchedEffect(replaySequence) {
+        if (replaySequence == 0 && !playIntro) {
+            // Start fully assembled; tapping the logo still replays the full sequence.
+            sideOffsetDp.snapTo(0f)
+            pucksAlpha.snapTo(1f)
+            rollAngle.snapTo(0f)
+            impactSquash.snapTo(1f)
+            orbitRadiusDp.snapTo(0f)
+            swirlAngleDeg.snapTo(0f)
+            morphToCapsule.snapTo(1f)
+            diamondAppear.snapTo(1f)
+            shockwaveProgress.snapTo(1f)
+            wordmarkAlpha.snapTo(1f)
+            return@LaunchedEffect
+        }
         coroutineScope {
             // Reset start pose: wide sides off-center, full circles
             sideOffsetDp.snapTo(92f)

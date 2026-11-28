@@ -3,6 +3,6 @@
     <style name="Theme.Meld" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:windowBackground">@color/meld_launch_bg</item>
         <item name="android:windowSplashScreenBackground">@color/meld_launch_bg</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_meld_splash_mark</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_blank</item>
     </style>
 </resources>
